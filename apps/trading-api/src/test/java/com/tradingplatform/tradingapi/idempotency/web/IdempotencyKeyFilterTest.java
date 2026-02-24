@@ -108,12 +108,42 @@ class IdempotencyKeyFilterTest {
     filter.doFilter(
         request,
         response,
-        (req, res) ->
-            ((MockHttpServletResponse) res).setStatus(MockHttpServletResponse.SC_CREATED));
+        (req, res) -> {
+          MockHttpServletResponse httpResponse = (MockHttpServletResponse) res;
+          httpResponse.setStatus(MockHttpServletResponse.SC_CREATED);
+          httpResponse.setContentType("application/json");
+          httpResponse.getWriter().write("{\"orderId\":\"ord-1\"}");
+        });
 
     assertEquals(MockHttpServletResponse.SC_CREATED, response.getStatus());
     assertEquals("new", response.getHeader("X-Idempotency-Status"));
-    verify(persistenceApi).markCompleted(created.id(), MockHttpServletResponse.SC_CREATED, null);
+    verify(persistenceApi)
+        .markCompleted(created.id(), MockHttpServletResponse.SC_CREATED, "{\"orderId\":\"ord-1\"}");
+  }
+
+  @Test
+  void shouldReplayCompletedRequestWithSameHash() throws Exception {
+    MockHttpServletRequest request = request("POST", "/v1/orders", "{\"symbol\":\"BTCUSDT\"}");
+    request.addHeader("Idempotency-Key", IDEMPOTENCY_KEY);
+    MockHttpServletResponse response = new MockHttpServletResponse();
+
+    when(requestHashCalculator.compute(any(), any())).thenReturn(HASH);
+    when(persistenceApi.findByScopeAndKey(SCOPE, IDEMPOTENCY_KEY))
+        .thenReturn(
+            Optional.of(
+                record(
+                    IdempotencyStatus.COMPLETED,
+                    HASH,
+                    MockHttpServletResponse.SC_ACCEPTED,
+                    "{\"orderId\":\"abc\"}")));
+
+    filter.doFilter(request, response, noOpChain());
+
+    assertEquals(MockHttpServletResponse.SC_ACCEPTED, response.getStatus());
+    assertEquals("replayed", response.getHeader("X-Idempotency-Status"));
+    assertEquals("{\"orderId\":\"abc\"}", response.getContentAsString());
+    verify(persistenceApi, never()).createInProgress(any(), any(), any(), any());
+    verify(persistenceApi, never()).markCompleted(any(), any(int.class), any());
   }
 
   @Test
@@ -186,6 +216,11 @@ class IdempotencyKeyFilterTest {
   }
 
   private static IdempotencyRecord record(IdempotencyStatus status, String requestHash) {
+    return record(status, requestHash, null, null);
+  }
+
+  private static IdempotencyRecord record(
+      IdempotencyStatus status, String requestHash, Integer responseCode, String responseBody) {
     Instant now = Instant.now();
     return new IdempotencyRecord(
         UUID.randomUUID(),
@@ -193,8 +228,8 @@ class IdempotencyKeyFilterTest {
         SCOPE,
         requestHash,
         status,
-        null,
-        null,
+        responseCode,
+        responseBody,
         null,
         now,
         now,

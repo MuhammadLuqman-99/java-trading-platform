@@ -1,6 +1,7 @@
 package com.tradingplatform.tradingapi.config;
 
 import java.net.URI;
+import com.tradingplatform.domain.orders.OrderDomainException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -109,6 +110,15 @@ public class GlobalExceptionHandler {
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     problem.setType(URI.create(TYPE_PREFIX + "invalid-argument"));
     problem.setTitle("Invalid Argument");
+    return problem;
+  }
+
+  @ExceptionHandler(OrderDomainException.class)
+  public ProblemDetail handleOrderDomain(OrderDomainException ex) {
+    ProblemDetail problem =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    problem.setType(URI.create(TYPE_PREFIX + "order-domain-error"));
+    problem.setTitle("Order Validation Error");
     return problem;
   }
 

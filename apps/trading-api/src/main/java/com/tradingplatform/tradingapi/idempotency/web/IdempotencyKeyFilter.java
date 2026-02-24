@@ -22,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.ContentCachingResponseWrapper;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 20)
@@ -94,10 +95,12 @@ public class IdempotencyKeyFilter extends OncePerRequestFilter {
       throw ex;
     }
 
-    response.setHeader("X-Idempotency-Status", "new");
+    ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
+    responseWrapper.setHeader("X-Idempotency-Status", "new");
     try {
-      filterChain.doFilter(wrappedRequest, response);
-      finalizeRecord(createdRecord, response);
+      filterChain.doFilter(wrappedRequest, responseWrapper);
+      finalizeRecord(createdRecord, responseWrapper);
+      responseWrapper.copyBodyToResponse();
     } catch (Exception ex) {
       persistenceApi.markFailed(createdRecord.id(), "UNHANDLED_EXCEPTION");
       if (ex instanceof ServletException servletException) {
@@ -117,13 +120,14 @@ public class IdempotencyKeyFilter extends OncePerRequestFilter {
     return persistenceApi.createInProgress(scope, idempotencyKey, requestHash, expiresAt);
   }
 
-  private void finalizeRecord(IdempotencyRecord createdRecord, HttpServletResponse response) {
+  private void finalizeRecord(
+      IdempotencyRecord createdRecord, ContentCachingResponseWrapper response) {
     int responseCode = response.getStatus();
     if (responseCode >= 500) {
       persistenceApi.markFailed(createdRecord.id(), "HTTP_" + responseCode);
       return;
     }
-    persistenceApi.markCompleted(createdRecord.id(), responseCode, null);
+    persistenceApi.markCompleted(createdRecord.id(), responseCode, extractResponseBody(response));
   }
 
   private void handleExisting(
@@ -150,12 +154,7 @@ public class IdempotencyKeyFilter extends OncePerRequestFilter {
     }
 
     if (existing.status() == IdempotencyStatus.COMPLETED) {
-      writeError(
-          response,
-          HttpStatus.CONFLICT,
-          "IDEMPOTENCY_DUPLICATE_COMPLETED",
-          "A completed request already exists for this idempotency key.",
-          "duplicate_completed");
+      replayCompleted(existing, response);
       return;
     }
 
@@ -179,6 +178,38 @@ public class IdempotencyKeyFilter extends OncePerRequestFilter {
     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
     response.setHeader("X-Idempotency-Status", statusHeaderValue);
     objectMapper.writeValue(response.getWriter(), new IdempotencyErrorResponse(code, message));
+  }
+
+  private void replayCompleted(IdempotencyRecord existing, HttpServletResponse response)
+      throws IOException {
+    if (existing.responseCode() == null) {
+      writeError(
+          response,
+          HttpStatus.CONFLICT,
+          "IDEMPOTENCY_DUPLICATE_COMPLETED",
+          "A completed request already exists for this idempotency key.",
+          "duplicate_completed");
+      return;
+    }
+    response.setStatus(existing.responseCode());
+    response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+    response.setHeader("X-Idempotency-Status", "replayed");
+    if (existing.responseBody() != null && !existing.responseBody().isBlank()) {
+      response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+      response.getWriter().write(existing.responseBody());
+    }
+  }
+
+  private String extractResponseBody(ContentCachingResponseWrapper response) {
+    byte[] body = response.getContentAsByteArray();
+    if (body == null || body.length == 0) {
+      return null;
+    }
+    String encoding = response.getCharacterEncoding();
+    if (encoding == null || encoding.isBlank()) {
+      encoding = StandardCharsets.UTF_8.name();
+    }
+    return new String(body, java.nio.charset.Charset.forName(encoding));
   }
 
   private String buildScope(HttpServletRequest request) {
