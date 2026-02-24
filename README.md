@@ -76,3 +76,15 @@ Common local workflow:
 mvn spotless:apply
 mvn -B -ntp verify
 ```
+
+## Keycloak Realm and JWT Notes
+
+- Realm export file: `deploy/keycloak/realm-trading-platform-dev.json`
+- Compose imports this realm on startup (`keycloak` runs with `--import-realm`)
+- JWT integration notes: `docs/security/jwt-config-notes.md`
+
+Boot local auth stack:
+
+```bash
+docker compose --env-file deploy/.env.example -f deploy/docker-compose.yml up -d keycloak postgres
+```

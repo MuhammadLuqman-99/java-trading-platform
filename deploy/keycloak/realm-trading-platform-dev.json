@@ -1,0 +1,207 @@
+{
+  "realm": "trading-platform",
+  "enabled": true,
+  "displayName": "Trading Platform (Dev)",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "TRADER",
+        "description": "Can place and manage orders for assigned accounts."
+      },
+      {
+        "name": "VIEWER",
+        "description": "Read-only access to balances, positions, and orders."
+      },
+      {
+        "name": "ADMIN",
+        "description": "Administrative control over users, limits, and manual adjustments."
+      },
+      {
+        "name": "COMPLIANCE",
+        "description": "Access to audit and compliance operations."
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "trading-api",
+      "name": "trading-api",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": true,
+      "secret": "trading-api-secret-dev",
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    },
+    {
+      "clientId": "trading-api-swagger",
+      "name": "trading-api-swagger",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "bearerOnly": false,
+      "serviceAccountsEnabled": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "fullScopeAllowed": true,
+      "redirectUris": [
+        "http://localhost:8081/swagger-ui/oauth2-redirect.html",
+        "http://127.0.0.1:8081/swagger-ui/oauth2-redirect.html",
+        "http://localhost:8080/swagger-ui/oauth2-redirect.html",
+        "https://oauth.pstmn.io/v1/callback",
+        "https://oauth.pstmn.io/v1/browser-callback"
+      ],
+      "webOrigins": [
+        "http://localhost:8081",
+        "http://127.0.0.1:8081",
+        "http://localhost:8080",
+        "https://oauth.pstmn.io"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience-trading-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "trading-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "trader_dev",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Trader",
+      "lastName": "Developer",
+      "email": "trader.dev@local.trading",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ChangeMe123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "TRADER"
+      ]
+    },
+    {
+      "username": "viewer_dev",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Viewer",
+      "lastName": "Developer",
+      "email": "viewer.dev@local.trading",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ChangeMe123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "VIEWER"
+      ]
+    },
+    {
+      "username": "admin_dev",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "Developer",
+      "email": "admin.dev@local.trading",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ChangeMe123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ADMIN"
+      ]
+    },
+    {
+      "username": "compliance_dev",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Compliance",
+      "lastName": "Developer",
+      "email": "compliance.dev@local.trading",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ChangeMe123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "COMPLIANCE"
+      ]
+    },
+    {
+      "username": "ops_dev",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Ops",
+      "lastName": "Developer",
+      "email": "ops.dev@local.trading",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ChangeMe123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ADMIN",
+        "COMPLIANCE"
+      ]
+    }
+  ]
+}
