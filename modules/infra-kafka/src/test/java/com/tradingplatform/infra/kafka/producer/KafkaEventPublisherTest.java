@@ -2,6 +2,7 @@ package com.tradingplatform.infra.kafka.producer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -17,8 +18,10 @@ import com.tradingplatform.infra.kafka.serde.EventObjectMapperFactory;
 import com.tradingplatform.infra.kafka.topics.TopicNames;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 import org.junit.jupiter.api.Test;
@@ -80,5 +83,41 @@ class KafkaEventPublisherTest {
     Header header = record.headers().lastHeader(headerName);
     assertNotNull(header, "Expected header " + headerName + " to exist");
     return new String(header.value(), StandardCharsets.UTF_8);
+  }
+
+  @Test
+  void shouldWrapPublishFailureWithKafkaPublishException() {
+    @SuppressWarnings("unchecked")
+    KafkaTemplate<String, String> kafkaTemplate = mock(KafkaTemplate.class);
+    EventEnvelopeJsonCodec codec = new EventEnvelopeJsonCodec(EventObjectMapperFactory.create());
+    KafkaEventPublisher publisher =
+        new KafkaEventPublisher(kafkaTemplate, codec, new NoOpKafkaTelemetry(), Duration.ZERO);
+
+    CompletableFuture<SendResult<String, String>> failedFuture = new CompletableFuture<>();
+    failedFuture.completeExceptionally(new IllegalStateException("broker unavailable"));
+    when(kafkaTemplate.send(any(ProducerRecord.class))).thenReturn(failedFuture);
+
+    EventEnvelope<OrderSubmittedV1> envelope =
+        EventEnvelope.of(
+            EventTypes.ORDER_SUBMITTED,
+            1,
+            "trading-api",
+            "ord-1001",
+            "ord-1001",
+            new OrderSubmittedV1(
+                "ord-1001",
+                "acc-2001",
+                "BTCUSDT",
+                "BUY",
+                "LIMIT",
+                new BigDecimal("0.01"),
+                new BigDecimal("40000.00"),
+                Instant.parse("2026-02-24T12:00:00Z")));
+
+    ExecutionException ex =
+        assertThrows(
+            ExecutionException.class,
+            () -> publisher.publish(TopicNames.ORDERS_SUBMITTED_V1, "ord-1001", envelope).get());
+    assertEquals(KafkaPublishException.class, ex.getCause().getClass());
   }
 }

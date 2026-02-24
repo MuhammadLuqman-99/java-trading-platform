@@ -6,4 +6,8 @@ public interface RetryPolicy {
   boolean shouldRetry(int attempt, Exception exception);
 
   Duration backoffForAttempt(int attempt);
+
+  default boolean isRetryable(Exception exception) {
+    return true;
+  }
 }

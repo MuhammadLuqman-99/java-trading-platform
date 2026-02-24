@@ -12,7 +12,17 @@ spring:
 
 infra:
   kafka:
-    consumer-group-id: cg-exec-adapter
+    consumer:
+      group-id: cg-exec-adapter
+      auto-offset-reset: earliest
+      concurrency: 1
+    producer:
+      client-id: worker-exec
+      idempotence-enabled: true
+    retry:
+      mode: fixed
+      max-attempts: 2
+      fixed-backoff-ms: 100
 
 outbox:
   publisher:

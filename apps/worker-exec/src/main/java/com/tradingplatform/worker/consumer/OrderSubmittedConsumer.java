@@ -40,7 +40,7 @@ public class OrderSubmittedConsumer {
 
   @KafkaListener(
       topics = TopicNames.ORDERS_SUBMITTED_V1,
-      groupId = "${infra.kafka.consumer-group-id:cg-exec-adapter}",
+      groupId = "${infra.kafka.consumer.group-id:${infra.kafka.consumer-group-id:cg-exec-adapter}}",
       containerFactory = "infraKafkaListenerContainerFactory")
   public void onMessage(ConsumerRecord<String, String> record, Acknowledgment ack) {
     adapter.process(record, 1);

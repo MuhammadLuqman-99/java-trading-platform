@@ -1,10 +1,11 @@
 package com.tradingplatform.infra.kafka.consumer;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.tradingplatform.infra.kafka.contract.EventEnvelope;
@@ -15,7 +16,6 @@ import com.tradingplatform.infra.kafka.errors.DeadLetterPublisher;
 import com.tradingplatform.infra.kafka.errors.FixedBackoffRetryPolicy;
 import com.tradingplatform.infra.kafka.errors.InvalidEventMetadataException;
 import com.tradingplatform.infra.kafka.errors.RetryPolicy;
-import com.tradingplatform.infra.kafka.errors.RetryableKafkaProcessingException;
 import com.tradingplatform.infra.kafka.observability.NoOpKafkaTelemetry;
 import com.tradingplatform.infra.kafka.serde.EventEnvelopeJsonCodec;
 import com.tradingplatform.infra.kafka.serde.EventObjectMapperFactory;
@@ -51,7 +51,7 @@ class EventConsumerAdapterTest {
     ConsumerRecord<String, String> record = createRecord(true);
     adapter.process(record);
 
-    verify(handler).handle(any());
+    verify(handler, times(1)).handle(any());
     verify(deadLetterPublisher, never()).publish(any(), any(), any());
   }
 
@@ -68,14 +68,14 @@ class EventConsumerAdapterTest {
             codec,
             handler,
             deadLetterPublisher,
-            new FixedBackoffRetryPolicy(1, Duration.ZERO),
+            new FixedBackoffRetryPolicy(3, Duration.ZERO),
             new NoOpKafkaTelemetry());
 
     ConsumerRecord<String, String> record = createRecord(false);
     adapter.process(record);
 
     verify(handler, never()).handle(any());
-    verify(deadLetterPublisher)
+    verify(deadLetterPublisher, times(1))
         .publish(
             eq(TopicNames.ORDERS_SUBMITTED_V1),
             eq(record),
@@ -83,7 +83,7 @@ class EventConsumerAdapterTest {
   }
 
   @Test
-  void shouldThrowRetryableExceptionWhenRetryPolicyAllowsRetry() throws Exception {
+  void shouldRetryAndSucceedBeforeExhaustion() throws Exception {
     @SuppressWarnings("unchecked")
     EventHandler<OrderSubmittedV1> handler = mock(EventHandler.class);
     DeadLetterPublisher deadLetterPublisher = mock(DeadLetterPublisher.class);
@@ -95,18 +95,19 @@ class EventConsumerAdapterTest {
             codec,
             handler,
             deadLetterPublisher,
-            new FixedBackoffRetryPolicy(2, Duration.ofMillis(50)),
+            new FixedBackoffRetryPolicy(2, Duration.ZERO),
             new NoOpKafkaTelemetry());
     ConsumerRecord<String, String> record = createRecord(true);
 
-    org.mockito.Mockito.doThrow(new IllegalStateException("boom")).when(handler).handle(any());
+    doThrow(new IllegalStateException("transient")).doNothing().when(handler).handle(any());
+    adapter.process(record);
 
-    assertThrows(RetryableKafkaProcessingException.class, () -> adapter.process(record, 1));
+    verify(handler, times(2)).handle(any());
     verify(deadLetterPublisher, never()).publish(any(), any(), any());
   }
 
   @Test
-  void shouldDeadLetterWhenHandlerFailsAndNoRetryConfigured() throws Exception {
+  void shouldDeadLetterAfterRetryExhausted() throws Exception {
     @SuppressWarnings("unchecked")
     EventHandler<OrderSubmittedV1> handler = mock(EventHandler.class);
     DeadLetterPublisher deadLetterPublisher = mock(DeadLetterPublisher.class);
@@ -118,15 +119,44 @@ class EventConsumerAdapterTest {
             codec,
             handler,
             deadLetterPublisher,
-            new FixedBackoffRetryPolicy(1, Duration.ZERO),
+            new FixedBackoffRetryPolicy(2, Duration.ZERO),
             new NoOpKafkaTelemetry());
     ConsumerRecord<String, String> record = createRecord(true);
 
-    org.mockito.Mockito.doThrow(new IllegalStateException("boom")).when(handler).handle(any());
-    adapter.process(record, 1);
+    doThrow(new IllegalStateException("boom")).when(handler).handle(any());
+    adapter.process(record);
 
-    verify(deadLetterPublisher)
+    verify(handler, times(2)).handle(any());
+    verify(deadLetterPublisher, times(1))
         .publish(eq(TopicNames.ORDERS_SUBMITTED_V1), eq(record), any(IllegalStateException.class));
+  }
+
+  @Test
+  void shouldNotRetryWhenHandlerThrowsNonRetryableException() throws Exception {
+    @SuppressWarnings("unchecked")
+    EventHandler<OrderSubmittedV1> handler = mock(EventHandler.class);
+    DeadLetterPublisher deadLetterPublisher = mock(DeadLetterPublisher.class);
+    EventConsumerAdapter<OrderSubmittedV1> adapter =
+        new EventConsumerAdapter<>(
+            OrderSubmittedV1.class,
+            EventTypes.ORDER_SUBMITTED,
+            1,
+            codec,
+            handler,
+            deadLetterPublisher,
+            new FixedBackoffRetryPolicy(3, Duration.ZERO),
+            new NoOpKafkaTelemetry());
+    ConsumerRecord<String, String> record = createRecord(true);
+
+    doThrow(new InvalidEventMetadataException("non retryable")).when(handler).handle(any());
+    adapter.process(record);
+
+    verify(handler, times(1)).handle(any());
+    verify(deadLetterPublisher, times(1))
+        .publish(
+            eq(TopicNames.ORDERS_SUBMITTED_V1),
+            eq(record),
+            any(InvalidEventMetadataException.class));
   }
 
   private ConsumerRecord<String, String> createRecord(boolean includeVersionHeader) {

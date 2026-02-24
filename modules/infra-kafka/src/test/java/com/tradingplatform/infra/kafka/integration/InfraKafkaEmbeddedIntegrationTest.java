@@ -35,8 +35,8 @@ import org.springframework.test.annotation.DirtiesContext;
     classes = InfraKafkaEmbeddedIntegrationTest.TestApplication.class,
     properties = {
       "infra.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}",
-      "infra.kafka.consumer-group-id=infra-kafka-it",
-      "infra.kafka.auto-offset-reset=earliest"
+      "infra.kafka.consumer.group-id=infra-kafka-it",
+      "infra.kafka.consumer.auto-offset-reset=earliest"
     })
 @EmbeddedKafka(partitions = 1, topics = TopicNames.ORDERS_SUBMITTED_V1)
 @DirtiesContext
