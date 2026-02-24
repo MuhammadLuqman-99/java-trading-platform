@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: worker-exec
+
+infra:
+  kafka:
+    consumer-group-id: cg-exec-adapter
