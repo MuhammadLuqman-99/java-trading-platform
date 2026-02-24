@@ -13,4 +13,12 @@
 
   <artifactId>infra</artifactId>
   <name>modules-infra</name>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.tradingplatform</groupId>
+      <artifactId>infra-kafka</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+  </dependencies>
 </project>
