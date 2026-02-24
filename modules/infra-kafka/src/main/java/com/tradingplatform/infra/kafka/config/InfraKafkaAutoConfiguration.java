@@ -5,6 +5,7 @@ import com.tradingplatform.infra.kafka.errors.DeadLetterPublisher;
 import com.tradingplatform.infra.kafka.errors.LoggingDeadLetterPublisher;
 import com.tradingplatform.infra.kafka.errors.RetryPolicy;
 import com.tradingplatform.infra.kafka.observability.KafkaTelemetry;
+import com.tradingplatform.infra.kafka.observability.MicrometerKafkaTelemetry;
 import com.tradingplatform.infra.kafka.observability.NoOpKafkaTelemetry;
 import com.tradingplatform.infra.kafka.producer.EventPublisher;
 import com.tradingplatform.infra.kafka.producer.KafkaEventPublisher;
@@ -19,6 +20,8 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -29,6 +32,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
+import io.micrometer.core.instrument.MeterRegistry;
 
 @AutoConfiguration
 @EnableConfigurationProperties(InfraKafkaProperties.class)
@@ -47,8 +51,16 @@ public class InfraKafkaAutoConfiguration {
   }
 
   @Bean
-  @ConditionalOnMissingBean
-  public KafkaTelemetry kafkaTelemetry() {
+  @ConditionalOnClass(MeterRegistry.class)
+  @ConditionalOnBean(MeterRegistry.class)
+  @ConditionalOnMissingBean(KafkaTelemetry.class)
+  public KafkaTelemetry micrometerKafkaTelemetry(MeterRegistry meterRegistry) {
+    return new MicrometerKafkaTelemetry(meterRegistry);
+  }
+
+  @Bean
+  @ConditionalOnMissingBean(KafkaTelemetry.class)
+  public KafkaTelemetry noOpKafkaTelemetry() {
     return new NoOpKafkaTelemetry();
   }
 

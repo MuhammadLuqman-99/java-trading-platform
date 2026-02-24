@@ -54,7 +54,8 @@ class TradingApiApplicationTest {
 
   @Test
   void publicApiGroupShouldExcludeVersionEndpoint() {
-    ResponseEntity<Map> response = restTemplate.getForEntity(baseUrl("/v3/api-docs/public"), Map.class);
+    ResponseEntity<Map> response =
+        restTemplate.getForEntity(baseUrl("/v3/api-docs/public"), Map.class);
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
     Set<String> paths = openApiPaths(response.getBody());
@@ -63,7 +64,8 @@ class TradingApiApplicationTest {
 
   @Test
   void opsApiGroupShouldIncludeVersionAndHealthEndpoints() {
-    ResponseEntity<Map> response = restTemplate.getForEntity(baseUrl("/v3/api-docs/ops"), Map.class);
+    ResponseEntity<Map> response =
+        restTemplate.getForEntity(baseUrl("/v3/api-docs/ops"), Map.class);
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
     Set<String> paths = openApiPaths(response.getBody());

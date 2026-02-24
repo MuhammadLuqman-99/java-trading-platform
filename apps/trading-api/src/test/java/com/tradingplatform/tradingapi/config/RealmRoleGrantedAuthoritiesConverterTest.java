@@ -29,10 +29,7 @@ class RealmRoleGrantedAuthoritiesConverterTest {
   @Test
   void shouldKeepScopeAuthoritiesWhenScopeClaimExists() {
     Jwt jwt =
-        Jwt.withTokenValue("token")
-            .header("alg", "none")
-            .claim("scope", "read write")
-            .build();
+        Jwt.withTokenValue("token").header("alg", "none").claim("scope", "read write").build();
 
     Set<String> authorities = authorityNames(jwt);
     assertTrue(authorities.contains("SCOPE_read"));

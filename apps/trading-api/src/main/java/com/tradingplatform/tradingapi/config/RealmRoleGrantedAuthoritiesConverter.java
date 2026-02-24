@@ -12,7 +12,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 
 public class RealmRoleGrantedAuthoritiesConverter
     implements Converter<Jwt, Collection<GrantedAuthority>> {
-  private final JwtGrantedAuthoritiesConverter scopeConverter = new JwtGrantedAuthoritiesConverter();
+  private final JwtGrantedAuthoritiesConverter scopeConverter =
+      new JwtGrantedAuthoritiesConverter();
 
   @Override
   public Collection<GrantedAuthority> convert(Jwt jwt) {
