@@ -103,6 +103,7 @@ public class JdbcIdempotencyPersistenceApi implements IdempotencyPersistenceApi 
 
   @Override
   public void markFailed(UUID id, String errorCode) {
+    String safeErrorCode = normalizeErrorCode(errorCode);
     String sql =
         """
         UPDATE idempotency_keys
@@ -111,7 +112,14 @@ public class JdbcIdempotencyPersistenceApi implements IdempotencyPersistenceApi 
             updated_at = NOW()
         WHERE id = ?
         """;
-    jdbcTemplate.update(sql, errorCode, id);
+    jdbcTemplate.update(sql, safeErrorCode, id);
+  }
+
+  private static String normalizeErrorCode(String errorCode) {
+    if (errorCode == null || errorCode.isBlank()) {
+      return "UNSPECIFIED_ERROR";
+    }
+    return errorCode;
   }
 
   private IdempotencyRecord mapRecord(ResultSet rs, int rowNum) throws SQLException {
