@@ -1,7 +1,22 @@
 spring:
   application:
     name: worker-exec
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/trading}
+    username: ${SPRING_DATASOURCE_USERNAME:trading}
+    password: ${SPRING_DATASOURCE_PASSWORD:trading_pass}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
 
 infra:
   kafka:
     consumer-group-id: cg-exec-adapter
+
+outbox:
+  publisher:
+    enabled: ${OUTBOX_PUBLISHER_ENABLED:true}
+    batch-size: ${OUTBOX_PUBLISHER_BATCH_SIZE:100}
+    fixed-delay-ms: ${OUTBOX_PUBLISHER_FIXED_DELAY_MS:1000}
+    producer-name: ${OUTBOX_PUBLISHER_PRODUCER_NAME:worker-exec-outbox-publisher}

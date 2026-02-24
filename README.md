@@ -59,3 +59,20 @@ Shared envelope:
 mvn validate
 mvn -DskipTests compile
 ```
+
+## CI and Code Style
+
+This repository uses GitHub Actions to enforce build, unit tests, and formatting checks on pull requests and pushes to `master`/`main`.
+
+Commands equivalent to CI:
+
+```bash
+mvn -B -ntp spotless:check verify
+```
+
+Common local workflow:
+
+```bash
+mvn spotless:apply
+mvn -B -ntp verify
+```
