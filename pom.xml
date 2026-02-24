@@ -18,6 +18,8 @@
         <spring-boot.version>3.5.11</spring-boot.version>
         <maven.compiler.plugin.version>3.13.0</maven.compiler.plugin.version>
         <maven.surefire.plugin.version>3.5.2</maven.surefire.plugin.version>
+        <maven.failsafe.plugin.version>3.5.2</maven.failsafe.plugin.version>
+        <maven.jar.plugin.version>3.4.1</maven.jar.plugin.version>
         <spotless.maven.plugin.version>2.43.0</spotless.maven.plugin.version>
     </properties>
 
@@ -30,6 +32,7 @@
         <module>modules/domain-admin</module>
         <module>modules/infra</module>
         <module>modules/infra-kafka</module>
+        <module>modules/test-support</module>
         <module>modules/integration-binance</module>
         <module>apps/trading-api</module>
         <module>apps/streaming</module>
@@ -65,7 +68,26 @@
                     <version>${maven.surefire.plugin.version}</version>
                     <configuration>
                         <useModulePath>false</useModulePath>
+                        <excludes>
+                            <exclude>**/*IT.java</exclude>
+                        </excludes>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>${maven.failsafe.plugin.version}</version>
+                    <configuration>
+                        <useModulePath>false</useModulePath>
+                        <includes>
+                            <include>**/*IT.java</include>
+                        </includes>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>${maven.jar.plugin.version}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.springframework.boot</groupId>
@@ -90,6 +112,18 @@
             </plugins>
         </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>

@@ -152,6 +152,19 @@ mvn validate
 mvn -DskipTests compile
 ```
 
+## Testing
+
+```bash
+# Unit tests only (*Test, via Surefire)
+mvn test
+
+# Unit + integration tests (*IT, via Failsafe + Testcontainers)
+mvn verify
+```
+
+Integration tests require Docker to be running locally because they use Testcontainers
+for PostgreSQL and Kafka.
+
 ## CI and Code Style
 
 This repository uses GitHub Actions to enforce build, unit tests, and formatting checks on pull requests and pushes to `master`/`main`.

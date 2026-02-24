@@ -13,6 +13,7 @@ import com.tradingplatform.infra.kafka.observability.KafkaTelemetry;
 import com.tradingplatform.infra.kafka.producer.EventPublisher;
 import com.tradingplatform.infra.kafka.serde.EventEnvelopeJsonCodec;
 import com.tradingplatform.infra.kafka.topics.TopicNames;
+import com.tradingplatform.testsupport.containers.KafkaContainerBaseIT;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -20,6 +21,9 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -28,22 +32,29 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.test.annotation.DirtiesContext;
 
 @SpringBootTest(
-    classes = InfraKafkaEmbeddedIntegrationTest.TestApplication.class,
+    classes = InfraKafkaIntegrationIT.TestApplication.class,
     properties = {
-      "infra.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}",
+      "infra.kafka.bootstrap-servers=${spring.kafka.bootstrap-servers}",
       "infra.kafka.consumer.group-id=infra-kafka-it",
       "infra.kafka.consumer.auto-offset-reset=earliest"
     })
-@EmbeddedKafka(partitions = 1, topics = TopicNames.ORDERS_SUBMITTED_V1)
-@DirtiesContext
-class InfraKafkaEmbeddedIntegrationTest {
+class InfraKafkaIntegrationIT extends KafkaContainerBaseIT {
   @Autowired private EventPublisher eventPublisher;
 
   @Autowired private ReceivedOrderSubmittedEvents receivedEvents;
+
+  @BeforeAll
+  static void createTopic() throws Exception {
+    try (AdminClient admin =
+        AdminClient.create(java.util.Map.of("bootstrap.servers", bootstrapServers()))) {
+      admin.createTopics(
+              java.util.List.of(new NewTopic(TopicNames.ORDERS_SUBMITTED_V1, 1, (short) 1)))
+          .all()
+          .get(10, TimeUnit.SECONDS);
+    }
+  }
 
   @Test
   void shouldPublishAndConsumeOrderSubmittedEvent() throws Exception {
