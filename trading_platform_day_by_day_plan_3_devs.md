@@ -41,15 +41,15 @@
 
 ---
 
-## Week 3 — Risk + ledger core + simulated funding (Days 11–15)
+## Week 3 — Risk + ledger core + simulated funding (Days 11–15) ✅
 
-| Day | Dev A | Dev B | Dev C | Output |
-|---|---|---|---|---|
-| 11 | Implement Risk checks: max notional, price band, instrument status | Define ledger transaction + entries tables + repository | Add audit_log table + standard audit decorator | Risk rejects/accepts correctly; audited |
-| 12 | Implement Admin API: set limits, freeze/unfreeze trading | Implement ledger posting logic for simulated credit/debit | Add admin-only auth tests; secure admin routes | Admin can configure limits & freeze |
-| 13 | Implement Admin API: manual credit/debit (simulated deposit) | Emit `balances.updated` events on ledger changes | Add Postman collection generation step in CI | Funding simulation works + events emitted |
-| 14 | Implement portfolio endpoints: balances + positions (derived) | Implement reconciliation “stubs” (interfaces + scheduled job scaffold) | Add smoke test script (curl/postman) in repo | Portfolio APIs return correct values |
-| 15 | Harden error handling + idempotency edge cases | Add dead-letter strategy (retry topics or DB table) skeleton | Security checklist doc (secrets, logging, headers) | Stable API behavior + docs |
+| Day | Dev A | Dev B | Dev C | Output | Status |
+|---|---|---|---|---|---|
+| 11 | Implement Risk checks: max notional, price band, instrument status | Define ledger transaction + entries tables + repository | Add audit_log table + standard audit decorator | Risk rejects/accepts correctly; audited | ✅ Done |
+| 12 | Implement Admin API: set limits, freeze/unfreeze trading | Implement ledger posting logic for simulated credit/debit | Add admin-only auth tests; secure admin routes | Admin can configure limits & freeze | ✅ Done |
+| 13 | Implement Admin API: manual credit/debit (simulated deposit) | Emit `balances.updated` events on ledger changes | Add Postman collection generation step in CI | Funding simulation works + events emitted | ✅ Done |
+| 14 | Implement portfolio endpoints: balances + positions (derived) | Implement reconciliation “stubs” (interfaces + scheduled job scaffold) | Add smoke test script (curl/postman) in repo | Portfolio APIs return correct values | ✅ Done |
+| 15 | Harden error handling + idempotency edge cases | Add dead-letter strategy (retry topics or DB table) skeleton | Security checklist doc (secrets, logging, headers) | Stable API behavior + docs | ✅ Done |
 
 ---
 
