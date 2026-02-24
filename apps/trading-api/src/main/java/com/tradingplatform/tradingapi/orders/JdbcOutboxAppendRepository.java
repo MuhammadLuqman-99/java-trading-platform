@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tradingplatform.domain.orders.Order;
 import com.tradingplatform.domain.orders.OrderStatus;
 import com.tradingplatform.infra.kafka.contract.EventTypes;
+import com.tradingplatform.infra.kafka.contract.payload.BalanceUpdatedV1;
 import com.tradingplatform.infra.kafka.contract.payload.OrderSubmittedV1;
 import com.tradingplatform.infra.kafka.contract.payload.OrderUpdatedV1;
 import com.tradingplatform.infra.kafka.topics.TopicNames;
@@ -15,7 +16,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JdbcOutboxAppendRepository implements OutboxAppendRepository {
-  private static final String AGGREGATE_TYPE = "ORDER";
+  private static final String ORDER_AGGREGATE_TYPE = "ORDER";
+  private static final String WALLET_BALANCE_AGGREGATE_TYPE = "WALLET_BALANCE";
   private final JdbcTemplate jdbcTemplate;
   private final ObjectMapper objectMapper;
 
@@ -37,6 +39,7 @@ public class JdbcOutboxAppendRepository implements OutboxAppendRepository {
             order.price(),
             occurredAt);
     append(
+        ORDER_AGGREGATE_TYPE,
         order.id(),
         EventTypes.ORDER_SUBMITTED,
         payload,
@@ -55,10 +58,26 @@ public class JdbcOutboxAppendRepository implements OutboxAppendRepository {
             order.qty().subtract(order.filledQty()),
             order.exchangeOrderId(),
             occurredAt);
-    append(order.id(), EventTypes.ORDER_UPDATED, payload, TopicNames.ORDERS_UPDATED_V1);
+    append(
+        ORDER_AGGREGATE_TYPE,
+        order.id(),
+        EventTypes.ORDER_UPDATED,
+        payload,
+        TopicNames.ORDERS_UPDATED_V1);
   }
 
-  private void append(UUID orderId, String eventType, Object payload, String topic) {
+  @Override
+  public void appendBalanceUpdated(UUID accountId, BalanceUpdatedV1 payload) {
+    append(
+        WALLET_BALANCE_AGGREGATE_TYPE,
+        accountId,
+        EventTypes.BALANCE_UPDATED,
+        payload,
+        TopicNames.BALANCES_UPDATED_V1);
+  }
+
+  private void append(
+      String aggregateType, UUID aggregateId, String eventType, Object payload, String topic) {
     String payloadJson = toJson(payload);
     String sql =
         """
@@ -75,8 +94,9 @@ public class JdbcOutboxAppendRepository implements OutboxAppendRepository {
             created_at
         ) VALUES (?, ?, ?, ?, CAST(? AS JSONB), ?, ?, 'NEW', 0, NOW())
         """;
-    String key = orderId.toString();
-    jdbcTemplate.update(sql, UUID.randomUUID(), AGGREGATE_TYPE, key, eventType, payloadJson, topic, key);
+    String key = aggregateId.toString();
+    jdbcTemplate.update(
+        sql, UUID.randomUUID(), aggregateType, key, eventType, payloadJson, topic, key);
   }
 
   private String toJson(Object payload) {

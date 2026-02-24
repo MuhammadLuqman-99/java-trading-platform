@@ -10,6 +10,8 @@ import com.tradingplatform.domain.orders.OrderDomainException;
 import com.tradingplatform.domain.orders.OrderSide;
 import com.tradingplatform.domain.orders.OrderStatus;
 import com.tradingplatform.domain.orders.OrderType;
+import com.tradingplatform.tradingapi.risk.AccountLimitService;
+import com.tradingplatform.tradingapi.risk.TradingControlService;
 import com.tradingplatform.tradingapi.wallet.JdbcWalletRepository;
 import com.tradingplatform.tradingapi.wallet.WalletReservationService;
 import java.math.BigDecimal;
@@ -64,6 +66,8 @@ class CancelOrderWithWalletReleaseIT {
             new JdbcOrderEventRepository(jdbcTemplate),
             new JdbcOutboxAppendRepository(jdbcTemplate, objectMapper),
             walletService,
+            new TradingControlService(jdbcTemplate),
+            new AccountLimitService(jdbcTemplate),
             objectMapper);
     accountId = createAccountWithBalance("USDT", new BigDecimal("5000.00"));
   }

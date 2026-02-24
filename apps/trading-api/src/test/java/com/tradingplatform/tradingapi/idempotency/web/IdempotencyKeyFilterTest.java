@@ -1,6 +1,7 @@
 package com.tradingplatform.tradingapi.idempotency.web;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -16,6 +17,7 @@ import com.tradingplatform.tradingapi.idempotency.persistence.IdempotencyRecord;
 import com.tradingplatform.tradingapi.idempotency.persistence.IdempotencyStatus;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Optional;
@@ -73,6 +75,8 @@ class IdempotencyKeyFilterTest {
 
     assertEquals(MockHttpServletResponse.SC_BAD_REQUEST, response.getStatus());
     assertEquals("missing", response.getHeader("X-Idempotency-Status"));
+    assertTrue(response.getContentType().startsWith("application/problem+json"));
+    assertTrue(response.getContentAsString().contains("\"code\":\"IDEMPOTENCY_KEY_REQUIRED\""));
     verifyNoInteractions(persistenceApi);
   }
 
@@ -90,6 +94,7 @@ class IdempotencyKeyFilterTest {
 
     assertEquals(MockHttpServletResponse.SC_CONFLICT, response.getStatus());
     assertEquals("mismatch", response.getHeader("X-Idempotency-Status"));
+    assertTrue(response.getContentAsString().contains("\"code\":\"IDEMPOTENCY_REQUEST_MISMATCH\""));
     verify(persistenceApi, never()).createInProgress(any(), any(), any(), any());
   }
 
@@ -109,7 +114,7 @@ class IdempotencyKeyFilterTest {
         request,
         response,
         (req, res) -> {
-          MockHttpServletResponse httpResponse = (MockHttpServletResponse) res;
+          HttpServletResponse httpResponse = (HttpServletResponse) res;
           httpResponse.setStatus(MockHttpServletResponse.SC_CREATED);
           httpResponse.setContentType("application/json");
           httpResponse.getWriter().write("{\"orderId\":\"ord-1\"}");
@@ -189,7 +194,37 @@ class IdempotencyKeyFilterTest {
 
     assertEquals(MockHttpServletResponse.SC_CONFLICT, response.getStatus());
     assertEquals("in_progress", response.getHeader("X-Idempotency-Status"));
+    assertTrue(response.getContentAsString().contains("\"code\":\"IDEMPOTENCY_IN_PROGRESS\""));
     verify(persistenceApi, never()).markCompleted(any(), any(int.class), any());
+  }
+
+  @Test
+  void shouldReturnConflictWhenExistingRecordExpired() throws Exception {
+    MockHttpServletRequest request = request("POST", "/v1/orders", "{\"symbol\":\"BTCUSDT\"}");
+    request.addHeader("Idempotency-Key", IDEMPOTENCY_KEY);
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    IdempotencyRecord expired =
+        new IdempotencyRecord(
+            UUID.randomUUID(),
+            IDEMPOTENCY_KEY,
+            SCOPE,
+            HASH,
+            IdempotencyStatus.COMPLETED,
+            200,
+            "{\"ok\":true}",
+            null,
+            Instant.now().minusSeconds(200),
+            Instant.now().minusSeconds(200),
+            Instant.now().minusSeconds(10));
+
+    when(requestHashCalculator.compute(any(), any())).thenReturn(HASH);
+    when(persistenceApi.findByScopeAndKey(SCOPE, IDEMPOTENCY_KEY)).thenReturn(Optional.of(expired));
+
+    filter.doFilter(request, response, noOpChain());
+
+    assertEquals(MockHttpServletResponse.SC_CONFLICT, response.getStatus());
+    assertEquals("expired", response.getHeader("X-Idempotency-Status"));
+    assertTrue(response.getContentAsString().contains("\"code\":\"IDEMPOTENCY_KEY_EXPIRED\""));
   }
 
   private static MockHttpServletRequest request(String method, String uri, String body) {

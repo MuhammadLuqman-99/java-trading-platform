@@ -4,6 +4,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -11,8 +12,18 @@ import com.tradingplatform.domain.orders.Order;
 import com.tradingplatform.domain.orders.OrderSide;
 import com.tradingplatform.domain.orders.OrderStatus;
 import com.tradingplatform.domain.orders.OrderType;
+import com.tradingplatform.tradingapi.admin.funding.FundingAdjustmentResult;
+import com.tradingplatform.tradingapi.admin.funding.FundingAdjustmentService;
+import com.tradingplatform.tradingapi.admin.funding.FundingDirection;
 import com.tradingplatform.tradingapi.config.RealmRoleGrantedAuthoritiesConverter;
+import com.tradingplatform.tradingapi.ledger.AdminFundingService;
 import com.tradingplatform.tradingapi.orders.OrderApplicationService;
+import com.tradingplatform.tradingapi.orders.OrderCreateUseCase;
+import com.tradingplatform.tradingapi.portfolio.PortfolioQueryService;
+import com.tradingplatform.tradingapi.risk.AccountLimitConfig;
+import com.tradingplatform.tradingapi.risk.AccountLimitService;
+import com.tradingplatform.tradingapi.risk.TradingControlService;
+import com.tradingplatform.tradingapi.risk.TradingControlState;
 import com.tradingplatform.tradingapi.wallet.WalletReservationService;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -33,7 +44,13 @@ import org.springframework.test.web.servlet.MockMvc;
 class TradingApiSecurityTest {
   @Autowired private MockMvc mockMvc;
   @MockBean private OrderApplicationService orderApplicationService;
+  @MockBean private OrderCreateUseCase orderCreateUseCase;
   @MockBean private WalletReservationService walletReservationService;
+  @MockBean private FundingAdjustmentService fundingAdjustmentService;
+  @MockBean private AccountLimitService accountLimitService;
+  @MockBean private TradingControlService tradingControlService;
+  @MockBean private AdminFundingService adminFundingService;
+  @MockBean private PortfolioQueryService portfolioQueryService;
 
   // ---- Admin endpoint tests ----
 
@@ -86,6 +103,156 @@ class TradingApiSecurityTest {
         .andExpect(jsonPath("$.scope").value("admin"));
   }
 
+  @Test
+  void adminSetLimitsShouldReturnUnauthorizedWithoutToken() throws Exception {
+    mockMvc
+        .perform(
+            put("/v1/admin/limits/accounts/{accountId}", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validAccountLimitRequestJson()))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void adminSetLimitsShouldReturnForbiddenForNonAdminRole() throws Exception {
+    mockMvc
+        .perform(
+            put("/v1/admin/limits/accounts/{accountId}", UUID.randomUUID())
+                .with(traderJwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validAccountLimitRequestJson()))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void adminSetLimitsShouldReturnOkForAdminRole() throws Exception {
+    UUID accountId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    when(accountLimitService.upsert(
+            org.mockito.ArgumentMatchers.eq(accountId),
+            org.mockito.ArgumentMatchers.eq(new BigDecimal("25000")),
+            org.mockito.ArgumentMatchers.eq(1200),
+            org.mockito.ArgumentMatchers.anyString()))
+        .thenReturn(
+            new AccountLimitConfig(
+                accountId,
+                new BigDecimal("25000"),
+                1200,
+                "admin-user",
+                Instant.parse("2026-02-24T12:00:00Z")));
+
+    mockMvc
+        .perform(
+            put("/v1/admin/limits/accounts/{accountId}", accountId)
+                .with(adminJwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validAccountLimitRequestJson()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.accountId").value(accountId.toString()))
+        .andExpect(jsonPath("$.maxOrderNotional").value(25000))
+        .andExpect(jsonPath("$.priceBandBps").value(1200));
+  }
+
+  @Test
+  void adminFreezeShouldReturnUnauthorizedWithoutToken() throws Exception {
+    mockMvc
+        .perform(
+            put("/v1/admin/trading/freeze")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validFreezeRequestJson()))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void adminFreezeShouldReturnOkForAdminRole() throws Exception {
+    when(tradingControlService.freeze(
+            org.mockito.ArgumentMatchers.eq("maintenance"),
+            org.mockito.ArgumentMatchers.anyString()))
+        .thenReturn(
+            new TradingControlState(
+                true,
+                "maintenance",
+                "admin-user",
+                Instant.parse("2026-02-24T12:00:00Z")));
+
+    mockMvc
+        .perform(
+            put("/v1/admin/trading/freeze")
+                .with(adminJwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validFreezeRequestJson()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.tradingFrozen").value(true))
+        .andExpect(jsonPath("$.freezeReason").value("maintenance"));
+  }
+
+  @Test
+  void adminUnfreezeShouldReturnForbiddenForNonAdminRole() throws Exception {
+    mockMvc
+        .perform(put("/v1/admin/trading/unfreeze").with(traderJwt()))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void fundingAdjustmentShouldReturnUnauthorizedWithoutToken() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/admin/funding/adjustments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validFundingAdjustmentRequestJson()))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void fundingAdjustmentShouldReturnForbiddenForNonAdminRole() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/admin/funding/adjustments")
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("realm_access", Map.of("roles", List.of("TRADER"))))
+                        .authorities(new RealmRoleGrantedAuthoritiesConverter()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validFundingAdjustmentRequestJson()))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void fundingAdjustmentShouldReturnOkForAdminRole() throws Exception {
+    when(fundingAdjustmentService.adjust(
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.any()))
+        .thenReturn(
+            new FundingAdjustmentResult(
+                UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                "USDT",
+                FundingDirection.CREDIT,
+                new BigDecimal("100.00"),
+                new BigDecimal("1100.00"),
+                BigDecimal.ZERO,
+                "manual test funding",
+                Instant.parse("2026-02-24T12:00:00Z")));
+
+    mockMvc
+        .perform(
+            post("/v1/admin/funding/adjustments")
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("realm_access", Map.of("roles", List.of("ADMIN"))))
+                        .authorities(new RealmRoleGrantedAuthoritiesConverter()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validFundingAdjustmentRequestJson()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.accountId").value("11111111-1111-1111-1111-111111111111"))
+        .andExpect(jsonPath("$.asset").value("USDT"))
+        .andExpect(jsonPath("$.direction").value("CREDIT"))
+        .andExpect(jsonPath("$.available").value(1100.00))
+        .andExpect(jsonPath("$.reserved").value(0));
+  }
+
   // ---- Public endpoint tests ----
 
   @Test
@@ -126,7 +293,7 @@ class TradingApiSecurityTest {
 
   @Test
   void ordersCreateShouldReturnAcceptedForTraderRole() throws Exception {
-    when(orderApplicationService.createOrder(org.mockito.ArgumentMatchers.any()))
+    when(orderCreateUseCase.create(org.mockito.ArgumentMatchers.any()))
         .thenReturn(stubOrder());
 
     mockMvc
@@ -237,11 +404,54 @@ class TradingApiSecurityTest {
         .andExpect(jsonPath("$.totalElements").value(0));
   }
 
+  // ---- Portfolio endpoint tests ----
+
+  @Test
+  void balancesShouldReturnUnauthorizedWithoutToken() throws Exception {
+    mockMvc
+        .perform(get("/v1/balances").param("accountId", UUID.randomUUID().toString()))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void balancesShouldReturnOkForTraderRole() throws Exception {
+    UUID accountId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    when(portfolioQueryService.getBalances(accountId))
+        .thenReturn(
+            new com.tradingplatform.tradingapi.api.BalancesResponse(
+                accountId, List.of()));
+
+    mockMvc
+        .perform(get("/v1/balances").param("accountId", accountId.toString()).with(traderJwt()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.accountId").value(accountId.toString()))
+        .andExpect(jsonPath("$.balances").isArray());
+  }
+
+  @Test
+  void portfolioShouldReturnForbiddenForNonTraderRole() throws Exception {
+    mockMvc
+        .perform(
+            get("/v1/portfolio")
+                .param("accountId", UUID.randomUUID().toString())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("realm_access", Map.of("roles", List.of("VIEWER"))))
+                        .authorities(new RealmRoleGrantedAuthoritiesConverter())))
+        .andExpect(status().isForbidden());
+  }
+
   // ---- Helpers ----
 
   private static org.springframework.test.web.servlet.request.RequestPostProcessor traderJwt() {
     return jwt()
         .jwt(jwt -> jwt.claim("realm_access", Map.of("roles", List.of("TRADER"))))
+        .authorities(new RealmRoleGrantedAuthoritiesConverter());
+  }
+
+  private static org.springframework.test.web.servlet.request.RequestPostProcessor adminJwt() {
+    return jwt()
+        .jwt(jwt -> jwt.claim("realm_access", Map.of("roles", List.of("ADMIN"))))
         .authorities(new RealmRoleGrantedAuthoritiesConverter());
   }
 
@@ -270,7 +480,8 @@ class TradingApiSecurityTest {
           "symbol":"BTCUSDT",
           "side":"BUY",
           "type":"MARKET",
-          "qty":0.1
+          "qty":0.1,
+          "marketNotionalCap":5000
         }
         """;
   }
@@ -280,6 +491,35 @@ class TradingApiSecurityTest {
         {
           "accountId":"11111111-1111-1111-1111-111111111111",
           "reason":"user_requested"
+        }
+        """;
+  }
+
+  private static String validFundingAdjustmentRequestJson() {
+    return """
+        {
+          "accountId":"11111111-1111-1111-1111-111111111111",
+          "asset":"USDT",
+          "amount":100.00,
+          "direction":"CREDIT",
+          "reason":"manual test funding"
+        }
+        """;
+  }
+
+  private static String validAccountLimitRequestJson() {
+    return """
+        {
+          "maxOrderNotional":25000,
+          "priceBandBps":1200
+        }
+        """;
+  }
+
+  private static String validFreezeRequestJson() {
+    return """
+        {
+          "reason":"maintenance"
         }
         """;
   }

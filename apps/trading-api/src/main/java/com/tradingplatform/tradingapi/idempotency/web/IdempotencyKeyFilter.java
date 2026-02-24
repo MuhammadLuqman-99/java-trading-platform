@@ -10,6 +10,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -20,6 +21,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingResponseWrapper;
@@ -32,6 +34,8 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
     havingValue = "true",
     matchIfMissing = true)
 public class IdempotencyKeyFilter extends OncePerRequestFilter {
+  private static final String TYPE_PREFIX = "/problems/";
+
   private final IdempotencyProperties properties;
   private final IdempotencyPathMatcher pathMatcher;
   private final IdempotencyPersistenceApi persistenceApi;
@@ -65,6 +69,7 @@ public class IdempotencyKeyFilter extends OncePerRequestFilter {
       writeError(
           response,
           HttpStatus.BAD_REQUEST,
+          "idempotency-key-required",
           "IDEMPOTENCY_KEY_REQUIRED",
           "Missing required header: " + properties.getRequiredHeader(),
           "missing");
@@ -133,10 +138,22 @@ public class IdempotencyKeyFilter extends OncePerRequestFilter {
   private void handleExisting(
       IdempotencyRecord existing, String requestHash, HttpServletResponse response)
       throws IOException {
+    if (existing.isExpired(Instant.now())) {
+      writeError(
+          response,
+          HttpStatus.CONFLICT,
+          "idempotency-key-expired",
+          "IDEMPOTENCY_KEY_EXPIRED",
+          "The idempotency key has expired and cannot be replayed.",
+          "expired");
+      return;
+    }
+
     if (!existing.requestHash().equals(requestHash)) {
       writeError(
           response,
           HttpStatus.CONFLICT,
+          "idempotency-request-mismatch",
           "IDEMPOTENCY_REQUEST_MISMATCH",
           "Idempotency key was already used with a different request payload.",
           "mismatch");
@@ -147,6 +164,7 @@ public class IdempotencyKeyFilter extends OncePerRequestFilter {
       writeError(
           response,
           HttpStatus.CONFLICT,
+          "idempotency-in-progress",
           "IDEMPOTENCY_IN_PROGRESS",
           "A request with this idempotency key is still in progress.",
           "in_progress");
@@ -161,6 +179,7 @@ public class IdempotencyKeyFilter extends OncePerRequestFilter {
     writeError(
         response,
         HttpStatus.CONFLICT,
+        "idempotency-previously-failed",
         "IDEMPOTENCY_PREVIOUSLY_FAILED",
         "A previous request for this idempotency key failed.",
         "previously_failed");
@@ -169,15 +188,21 @@ public class IdempotencyKeyFilter extends OncePerRequestFilter {
   private void writeError(
       HttpServletResponse response,
       HttpStatus status,
+      String problemType,
       String code,
       String message,
       String statusHeaderValue)
       throws IOException {
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, message);
+    problem.setType(URI.create(TYPE_PREFIX + problemType));
+    problem.setTitle("Idempotency Error");
+    problem.setProperty("code", code);
+
     response.setStatus(status.value());
-    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+    response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
     response.setHeader("X-Idempotency-Status", statusHeaderValue);
-    objectMapper.writeValue(response.getWriter(), new IdempotencyErrorResponse(code, message));
+    objectMapper.writeValue(response.getWriter(), problem);
   }
 
   private void replayCompleted(IdempotencyRecord existing, HttpServletResponse response)
@@ -186,6 +211,7 @@ public class IdempotencyKeyFilter extends OncePerRequestFilter {
       writeError(
           response,
           HttpStatus.CONFLICT,
+          "idempotency-duplicate-completed",
           "IDEMPOTENCY_DUPLICATE_COMPLETED",
           "A completed request already exists for this idempotency key.",
           "duplicate_completed");

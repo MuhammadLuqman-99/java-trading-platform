@@ -29,15 +29,15 @@
 
 ---
 
-## Week 2 — Data model + invariants (Days 6–10)
+## Week 2 — Data model + invariants (Days 6–10) ✅
 
-| Day | Dev A | Dev B | Dev C | Output |
-|---|---|---|---|---|
-| 6 | Flyway migrations: users/accounts/wallet_balances/reservations | Flyway migrations: outbox_events + idempotency_keys | Add Testcontainers base + integration test harness | DB schema boots; first integration test runs |
-| 7 | Implement Wallet reservation service (`SELECT FOR UPDATE`) | Implement outbox publisher loop (poll→publish→mark) | Add Redis (rate limit counters) + config | Funds reservation invariant tested |
-| 8 | Implement Order entity + state machine + order_events append | Create Kafka topics in compose init (or auto-create) + producer utils | Add contract tests for event payload JSON schema | Order transitions + events recorded |
-| 9 | Implement `POST /v1/orders` (market/limit) with idempotency | Consumer skeleton: `orders.submitted` → calls adapter interface | Keycloak role mapping + endpoint security tests | Order API returns 202; duplicates dedupe |
-| 10 | Implement `POST /v1/orders/{id}/cancel` + order queries | Implement wallet reservation release on cancel (local) | Add DB indexes + basic perf checks (explain plans) | Cancel + list orders works locally |
+| Day | Dev A | Dev B | Dev C | Output | Status |
+|---|---|---|---|---|---|
+| 6 | Flyway migrations: users/accounts/wallet_balances/reservations | Flyway migrations: outbox_events + idempotency_keys | Add Testcontainers base + integration test harness | DB schema boots; first integration test runs | ✅ Done |
+| 7 | Implement Wallet reservation service (`SELECT FOR UPDATE`) | Implement outbox publisher loop (poll→publish→mark) | Add Redis (rate limit counters) + config | Funds reservation invariant tested | ✅ Done |
+| 8 | Implement Order entity + state machine + order_events append | Create Kafka topics in compose init (or auto-create) + producer utils | Add contract tests for event payload JSON schema | Order transitions + events recorded | ✅ Done |
+| 9 | Implement `POST /v1/orders` (market/limit) with idempotency | Consumer skeleton: `orders.submitted` → calls adapter interface | Keycloak role mapping + endpoint security tests | Order API returns 202; duplicates dedupe | ✅ Done |
+| 10 | Implement `POST /v1/orders/{id}/cancel` + order queries | Implement wallet reservation release on cancel (local) | Add DB indexes + basic perf checks (explain plans) | Cancel + list orders works locally | ✅ Done |
 
 ---
 

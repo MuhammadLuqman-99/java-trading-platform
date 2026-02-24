@@ -31,8 +31,56 @@ jobs:
           java-version: "21"
           cache: maven
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Print tool versions
         run: mvn -version
 
       - name: Spotless + Verify
         run: mvn -B -ntp spotless:check verify
+
+      - name: Generate OpenAPI + Postman Collection
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+
+          SERVER_PORT=18081 \
+          SPRING_DATASOURCE_URL='jdbc:h2:mem:postman-ci;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE' \
+          SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.h2.Driver \
+          SPRING_DATASOURCE_USERNAME=sa \
+          SPRING_DATASOURCE_PASSWORD='' \
+          SPRING_FLYWAY_ENABLED=false \
+          INFRA_KAFKA_TOPICS_ENABLED=false \
+          RATE_LIMIT_ENABLED=false \
+          mvn -B -ntp -pl apps/trading-api spring-boot:run > artifacts/trading-api-openapi.log 2>&1 &
+          APP_PID=$!
+
+          cleanup() {
+            kill "$APP_PID" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          for _ in {1..90}; do
+            if curl -fsS "http://localhost:18081/actuator/health" >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+          curl -fsS "http://localhost:18081/v3/api-docs" -o artifacts/openapi.json
+          npx -y -p openapi-to-postmanv2 openapi2postmanv2 \
+            -s artifacts/openapi.json \
+            -o artifacts/trading-api.postman_collection.json \
+            -p
+
+      - name: Upload OpenAPI and Postman artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: trading-api-api-artifacts
+          path: |
+            artifacts/openapi.json
+            artifacts/trading-api.postman_collection.json

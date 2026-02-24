@@ -2,6 +2,7 @@ package com.tradingplatform.infra.kafka.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tradingplatform.infra.kafka.errors.DeadLetterPublisher;
+import com.tradingplatform.infra.kafka.errors.KafkaDeadLetterPublisher;
 import com.tradingplatform.infra.kafka.errors.LoggingDeadLetterPublisher;
 import com.tradingplatform.infra.kafka.errors.RetryPolicy;
 import com.tradingplatform.infra.kafka.observability.KafkaTelemetry;
@@ -79,7 +80,14 @@ public class InfraKafkaAutoConfiguration {
 
   @Bean
   @ConditionalOnMissingBean
-  public DeadLetterPublisher deadLetterPublisher() {
+  public DeadLetterPublisher deadLetterPublisher(
+      KafkaTemplate<String, String> infraKafkaTemplate, InfraKafkaProperties properties) {
+    InfraKafkaProperties.DeadLetter deadLetter = properties.getDeadLetter();
+    if (deadLetter != null
+        && deadLetter.isEnabled()
+        && "topic".equalsIgnoreCase(deadLetter.getMode())) {
+      return new KafkaDeadLetterPublisher(infraKafkaTemplate, deadLetter);
+    }
     return new LoggingDeadLetterPublisher();
   }
 

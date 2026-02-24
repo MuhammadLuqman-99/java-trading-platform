@@ -4,6 +4,7 @@ import java.net.URI;
 import com.tradingplatform.domain.orders.OrderDomainException;
 import com.tradingplatform.domain.wallet.InsufficientBalanceException;
 import com.tradingplatform.domain.wallet.WalletDomainException;
+import com.tradingplatform.tradingapi.risk.RiskViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -131,6 +132,15 @@ public class GlobalExceptionHandler {
     ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, ex.getMessage());
     problem.setType(URI.create(TYPE_PREFIX + "wallet-error"));
     problem.setTitle("Wallet Error");
+    return problem;
+  }
+
+  @ExceptionHandler(RiskViolationException.class)
+  public ProblemDetail handleRiskViolation(RiskViolationException ex) {
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    problem.setType(URI.create(TYPE_PREFIX + "risk-violation"));
+    problem.setTitle("Risk Violation");
+    problem.setProperty("code", ex.code());
     return problem;
   }
 

@@ -8,8 +8,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface WalletRepository {
+  boolean accountExists(UUID accountId);
 
   Optional<WalletBalance> findBalanceForUpdate(UUID accountId, String asset);
+
+  void insertBalance(UUID accountId, String asset, BigDecimal available, BigDecimal reserved);
 
   void updateBalance(UUID accountId, String asset, BigDecimal available, BigDecimal reserved);
 

@@ -49,6 +49,11 @@ infra:
       mode: fixed
       max-attempts: 2
       fixed-backoff-ms: 100
+    dead-letter:
+      enabled: ${INFRA_KAFKA_DEAD_LETTER_ENABLED:true}
+      mode: ${INFRA_KAFKA_DEAD_LETTER_MODE:topic}
+      topic-suffix: ${INFRA_KAFKA_DEAD_LETTER_TOPIC_SUFFIX:.dlq.v1}
+      include-payload: ${INFRA_KAFKA_DEAD_LETTER_INCLUDE_PAYLOAD:true}
     topics:
       enabled: ${INFRA_KAFKA_TOPICS_ENABLED:true}
       partitions: ${INFRA_KAFKA_TOPICS_PARTITIONS:3}

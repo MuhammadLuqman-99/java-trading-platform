@@ -18,6 +18,10 @@ class InfraKafkaPropertiesTest {
     assertTrue(properties.getTopics().isEnabled());
     assertEquals(3, properties.getTopics().getPartitions());
     assertEquals(1, properties.getTopics().getReplicationFactor());
+    assertTrue(properties.getDeadLetter().isEnabled());
+    assertEquals("topic", properties.getDeadLetter().getMode());
+    assertEquals(".dlq.v1", properties.getDeadLetter().getTopicSuffix());
+    assertTrue(properties.getDeadLetter().isIncludePayload());
   }
 
   @Test

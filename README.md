@@ -61,6 +61,21 @@ curl http://localhost:8081/v1/version
 
 Open in your browser: http://localhost:8081/swagger-ui.html
 
+### 6b. Simulate funding (admin)
+
+```bash
+curl -X POST http://localhost:8081/v1/admin/funding/adjustments \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountId":"<account-uuid>",
+    "asset":"USDT",
+    "amount":1000,
+    "direction":"CREDIT",
+    "reason":"manual_sim_deposit"
+  }'
+```
+
 ### 7. Get a JWT token and test auth
 
 ```bash
@@ -77,6 +92,8 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8081/v1/admin/ping
 ```
 
 See `docs/security/jwt-config-notes.md` for full auth details.
+Security hardening checklist: `docs/security/security-checklist.md`.
+Stable API behavior notes: `docs/api/stable-api-behavior.md`.
 
 ### Environment Variables
 
@@ -134,6 +151,11 @@ Configured topics:
 - `balances.updated.v1` (key: `accountId`)
 - `*.dlq.v1` variants for dead-letter handling
 
+Dead-letter behavior:
+
+- Consumer failures are retried per `infra.kafka.retry.*`.
+- Irrecoverable failures are published to DLQ topics via `infra.kafka.dead-letter.*` (topic mode).
+
 Event payload contracts:
 
 - `OrderSubmittedV1`
@@ -175,12 +197,41 @@ Commands equivalent to CI:
 mvn -B -ntp spotless:check verify
 ```
 
+CI also generates and uploads API artifacts from `trading-api`:
+
+- `openapi.json`
+- `trading-api.postman_collection.json`
+- `docs/postman/portfolio-smoke.postman_collection.json`
+
 Common local workflow:
 
 ```bash
 mvn spotless:apply
 mvn -B -ntp verify
 ```
+
+## Portfolio Smoke
+
+Smoke scripts and Postman collection for portfolio endpoints are included:
+
+- Bash: `scripts/smoke/portfolio_smoke.sh`
+- PowerShell: `scripts/smoke/portfolio_smoke.ps1`
+- Postman: `docs/postman/portfolio-smoke.postman_collection.json`
+
+Example:
+
+```bash
+TOKEN="<trader-jwt>" ACCOUNT_ID="<account-uuid>" scripts/smoke/portfolio_smoke.sh
+```
+
+## Reconciliation Scaffold
+
+`BalanceReconciliationService` is wired with a scheduled scaffold job (disabled by default).
+
+Configuration:
+
+- `RECONCILIATION_BALANCE_ENABLED` (default `false`)
+- `RECONCILIATION_BALANCE_FIXED_DELAY_MS` (default `300000`)
 
 ## Keycloak Realm and JWT Notes
 

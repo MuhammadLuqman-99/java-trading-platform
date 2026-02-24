@@ -16,16 +16,19 @@ public record CreateOrderRequest(
     @NotNull OrderType type,
     @NotNull @DecimalMin(value = "0.000000000000000001", inclusive = true) BigDecimal qty,
     BigDecimal price,
+    BigDecimal marketNotionalCap,
     String clientOrderId) {
 
-  @AssertTrue(message = "price must be > 0 for LIMIT and null for MARKET")
-  public boolean isPriceValidForOrderType() {
+  @AssertTrue(message = "LIMIT requires price > 0; MARKET requires null price and marketNotionalCap > 0")
+  public boolean isPricingValidForOrderType() {
     if (type == null) {
       return true;
     }
     if (type == OrderType.MARKET) {
-      return price == null;
+      return price == null && marketNotionalCap != null && marketNotionalCap.compareTo(BigDecimal.ZERO) > 0;
     }
-    return price != null && price.compareTo(BigDecimal.ZERO) > 0;
+    return price != null
+        && price.compareTo(BigDecimal.ZERO) > 0
+        && (marketNotionalCap == null || marketNotionalCap.compareTo(BigDecimal.ZERO) > 0);
   }
 }

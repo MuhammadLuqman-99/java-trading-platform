@@ -64,3 +64,8 @@ rate-limit:
   window-seconds: ${RATE_LIMIT_WINDOW_SECONDS:60}
   opt-in-paths:
     - /v1/orders/**
+
+reconciliation:
+  balance:
+    enabled: ${RECONCILIATION_BALANCE_ENABLED:false}
+    fixed-delay-ms: ${RECONCILIATION_BALANCE_FIXED_DELAY_MS:300000}

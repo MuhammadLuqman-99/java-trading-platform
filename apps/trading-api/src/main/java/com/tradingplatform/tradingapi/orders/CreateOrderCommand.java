@@ -14,6 +14,32 @@ public record CreateOrderCommand(
     OrderType type,
     BigDecimal qty,
     BigDecimal price,
+    BigDecimal marketNotionalCap,
     String clientOrderId,
     String correlationId,
-    Instant occurredAt) {}
+    Instant occurredAt) {
+  public CreateOrderCommand(
+      UUID orderId,
+      UUID accountId,
+      String instrument,
+      OrderSide side,
+      OrderType type,
+      BigDecimal qty,
+      BigDecimal price,
+      String clientOrderId,
+      String correlationId,
+      Instant occurredAt) {
+    this(
+        orderId,
+        accountId,
+        instrument,
+        side,
+        type,
+        qty,
+        price,
+        null,
+        clientOrderId,
+        correlationId,
+        occurredAt);
+  }
+}

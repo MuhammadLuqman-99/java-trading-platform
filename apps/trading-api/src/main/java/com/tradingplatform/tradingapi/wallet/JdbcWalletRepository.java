@@ -22,6 +22,13 @@ public class JdbcWalletRepository implements WalletRepository {
   }
 
   @Override
+  public boolean accountExists(UUID accountId) {
+    String sql = "SELECT EXISTS(SELECT 1 FROM accounts WHERE id = ?)";
+    Boolean exists = jdbcTemplate.queryForObject(sql, Boolean.class, accountId);
+    return Boolean.TRUE.equals(exists);
+  }
+
+  @Override
   public Optional<WalletBalance> findBalanceForUpdate(UUID accountId, String asset) {
     String sql =
         """
@@ -32,6 +39,17 @@ public class JdbcWalletRepository implements WalletRepository {
         """;
     List<WalletBalance> rows = jdbcTemplate.query(sql, this::mapBalance, accountId, asset);
     return rows.isEmpty() ? Optional.empty() : Optional.of(rows.getFirst());
+  }
+
+  @Override
+  public void insertBalance(
+      UUID accountId, String asset, BigDecimal available, BigDecimal reserved) {
+    String sql =
+        """
+        INSERT INTO wallet_balances (account_id, asset, available, reserved, updated_at)
+        VALUES (?, ?, ?, ?, NOW())
+        """;
+    jdbcTemplate.update(sql, accountId, asset, available, reserved);
   }
 
   @Override

@@ -10,6 +10,7 @@ public class InfraKafkaProperties {
   private Producer producer = new Producer();
   private Consumer consumer = new Consumer();
   private Retry retry = new Retry();
+  private DeadLetter deadLetter = new DeadLetter();
   private Topics topics = new Topics();
 
   // Legacy fallback keys kept for compatibility.
@@ -49,6 +50,14 @@ public class InfraKafkaProperties {
 
   public void setRetry(Retry retry) {
     this.retry = retry;
+  }
+
+  public DeadLetter getDeadLetter() {
+    return deadLetter;
+  }
+
+  public void setDeadLetter(DeadLetter deadLetter) {
+    this.deadLetter = deadLetter;
   }
 
   public Topics getTopics() {
@@ -400,6 +409,45 @@ public class InfraKafkaProperties {
 
     public void setRetryableExceptions(List<String> retryableExceptions) {
       this.retryableExceptions = retryableExceptions;
+    }
+  }
+
+  public static class DeadLetter {
+    private boolean enabled = true;
+    private String mode = "topic";
+    private String topicSuffix = ".dlq.v1";
+    private boolean includePayload = true;
+
+    public boolean isEnabled() {
+      return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+      this.enabled = enabled;
+    }
+
+    public String getMode() {
+      return mode;
+    }
+
+    public void setMode(String mode) {
+      this.mode = mode;
+    }
+
+    public String getTopicSuffix() {
+      return topicSuffix;
+    }
+
+    public void setTopicSuffix(String topicSuffix) {
+      this.topicSuffix = topicSuffix;
+    }
+
+    public boolean isIncludePayload() {
+      return includePayload;
+    }
+
+    public void setIncludePayload(boolean includePayload) {
+      this.includePayload = includePayload;
     }
   }
 

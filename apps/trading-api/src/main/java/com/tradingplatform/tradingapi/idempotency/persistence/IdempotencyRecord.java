@@ -14,4 +14,8 @@ public record IdempotencyRecord(
     String errorCode,
     Instant createdAt,
     Instant updatedAt,
-    Instant expiresAt) {}
+    Instant expiresAt) {
+  public boolean isExpired(Instant now) {
+    return expiresAt != null && now != null && expiresAt.isBefore(now);
+  }
+}

@@ -4,6 +4,7 @@ import com.tradingplatform.domain.orders.Order;
 import com.tradingplatform.tradingapi.orders.CancelOrderCommand;
 import com.tradingplatform.tradingapi.orders.CreateOrderCommand;
 import com.tradingplatform.tradingapi.orders.OrderApplicationService;
+import com.tradingplatform.tradingapi.orders.OrderCreateUseCase;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
@@ -21,9 +22,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/v1/orders")
 public class OrderController {
+  private final OrderCreateUseCase orderCreateUseCase;
   private final OrderApplicationService orderApplicationService;
 
-  public OrderController(OrderApplicationService orderApplicationService) {
+  public OrderController(
+      OrderCreateUseCase orderCreateUseCase, OrderApplicationService orderApplicationService) {
+    this.orderCreateUseCase = orderCreateUseCase;
     this.orderApplicationService = orderApplicationService;
   }
 
@@ -38,7 +42,7 @@ public class OrderController {
             ? orderId.toString()
             : request.clientOrderId();
 
-    orderApplicationService.createOrder(
+    orderCreateUseCase.create(
         new CreateOrderCommand(
             orderId,
             request.accountId(),
@@ -47,6 +51,7 @@ public class OrderController {
             request.type(),
             request.qty(),
             request.price(),
+            request.marketNotionalCap(),
             clientOrderId,
             orderId.toString(),
             now));
