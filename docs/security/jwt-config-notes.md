@@ -6,7 +6,9 @@ This document defines local JWT conventions for the `trading-platform` realm.
 
 - Realm: `trading-platform`
 - Realm roles: `TRADER`, `VIEWER`, `ADMIN`, `COMPLIANCE`
-- Role claim source: `realm_access.roles`
+- Role claim sources:
+  - `realm_access.roles`
+  - `resource_access.trading-api.roles`
 
 ## Keycloak Clients (MVP)
 
@@ -70,7 +72,8 @@ spring:
 
 ## Role Mapping to Spring Authorities
 
-Map `realm_access.roles` into Spring authorities as `ROLE_*`:
+Map both `realm_access.roles` and `resource_access.trading-api.roles` into Spring
+authorities as `ROLE_*`:
 
 - `TRADER -> ROLE_TRADER`
 - `VIEWER -> ROLE_VIEWER`

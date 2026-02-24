@@ -51,8 +51,30 @@ class TradingApiSecurityTest {
   }
 
   @Test
+  void adminPingShouldReturnOkForAdminClientRole() throws Exception {
+    mockMvc
+        .perform(
+            get("/v1/admin/ping")
+                .with(
+                    jwt()
+                        .jwt(
+                            jwt ->
+                                jwt.claim(
+                                    "resource_access",
+                                    Map.of("trading-api", Map.of("roles", List.of("ADMIN")))))
+                        .authorities(new RealmRoleGrantedAuthoritiesConverter())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("ok"))
+        .andExpect(jsonPath("$.scope").value("admin"));
+  }
+
+  @Test
   void publicEndpointsShouldRemainAccessibleWithoutToken() throws Exception {
     mockMvc.perform(get("/v1/version")).andExpect(status().isOk());
     mockMvc.perform(get("/actuator/health")).andExpect(status().isOk());
+    mockMvc.perform(get("/v3/api-docs")).andExpect(status().isOk());
+    mockMvc.perform(get("/v3/api-docs/public")).andExpect(status().isOk());
+    mockMvc.perform(get("/v3/api-docs/ops")).andExpect(status().isOk());
+    mockMvc.perform(get("/swagger-ui.html")).andExpect(status().is3xxRedirection());
   }
 }
