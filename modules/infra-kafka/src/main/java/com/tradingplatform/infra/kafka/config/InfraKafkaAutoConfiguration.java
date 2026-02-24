@@ -7,13 +7,18 @@ import com.tradingplatform.infra.kafka.errors.RetryPolicy;
 import com.tradingplatform.infra.kafka.observability.KafkaTelemetry;
 import com.tradingplatform.infra.kafka.observability.MicrometerKafkaTelemetry;
 import com.tradingplatform.infra.kafka.observability.NoOpKafkaTelemetry;
+import com.tradingplatform.infra.kafka.producer.BalanceEventProducer;
 import com.tradingplatform.infra.kafka.producer.EventPublisher;
+import com.tradingplatform.infra.kafka.producer.ExecutionEventProducer;
 import com.tradingplatform.infra.kafka.producer.KafkaEventPublisher;
+import com.tradingplatform.infra.kafka.producer.OrderEventProducer;
 import com.tradingplatform.infra.kafka.serde.EventEnvelopeJsonCodec;
 import com.tradingplatform.infra.kafka.serde.EventObjectMapperFactory;
+import com.tradingplatform.infra.kafka.topics.KafkaTopicDefinitions;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -23,12 +28,14 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
@@ -121,6 +128,44 @@ public class InfraKafkaAutoConfiguration {
         eventEnvelopeJsonCodec,
         kafkaTelemetry,
         Duration.ofMillis(sendTimeoutMs));
+  }
+
+  @Bean
+  @ConditionalOnMissingBean
+  public OrderEventProducer orderEventProducer(
+      EventPublisher eventPublisher, InfraKafkaProperties properties) {
+    return new OrderEventProducer(eventPublisher, properties.effectiveProducerClientId());
+  }
+
+  @Bean
+  @ConditionalOnMissingBean
+  public ExecutionEventProducer executionEventProducer(
+      EventPublisher eventPublisher, InfraKafkaProperties properties) {
+    return new ExecutionEventProducer(eventPublisher, properties.effectiveProducerClientId());
+  }
+
+  @Bean
+  @ConditionalOnMissingBean
+  public BalanceEventProducer balanceEventProducer(
+      EventPublisher eventPublisher, InfraKafkaProperties properties) {
+    return new BalanceEventProducer(eventPublisher, properties.effectiveProducerClientId());
+  }
+
+  @Bean
+  @ConditionalOnProperty(
+      prefix = "infra.kafka.topics",
+      name = "enabled",
+      havingValue = "true",
+      matchIfMissing = true)
+  @ConditionalOnMissingBean(name = "infraKafkaTopics")
+  public KafkaAdmin.NewTopics infraKafkaTopics(InfraKafkaProperties properties) {
+    int partitions = Math.max(1, properties.getTopics().getPartitions());
+    short replicationFactor = (short) Math.max(1, properties.getTopics().getReplicationFactor());
+    NewTopic[] topics =
+        KafkaTopicDefinitions.defaults(partitions, replicationFactor).stream()
+            .map(KafkaTopicDefinitions.KafkaTopicDefinition::toNewTopic)
+            .toArray(NewTopic[]::new);
+    return new KafkaAdmin.NewTopics(topics);
   }
 
   @Bean

@@ -10,6 +10,7 @@ public class InfraKafkaProperties {
   private Producer producer = new Producer();
   private Consumer consumer = new Consumer();
   private Retry retry = new Retry();
+  private Topics topics = new Topics();
 
   // Legacy fallback keys kept for compatibility.
   private String producerClientId;
@@ -48,6 +49,14 @@ public class InfraKafkaProperties {
 
   public void setRetry(Retry retry) {
     this.retry = retry;
+  }
+
+  public Topics getTopics() {
+    return topics;
+  }
+
+  public void setTopics(Topics topics) {
+    this.topics = topics;
   }
 
   public String getProducerClientId() {
@@ -391,6 +400,36 @@ public class InfraKafkaProperties {
 
     public void setRetryableExceptions(List<String> retryableExceptions) {
       this.retryableExceptions = retryableExceptions;
+    }
+  }
+
+  public static class Topics {
+    private boolean enabled = true;
+    private int partitions = 3;
+    private short replicationFactor = 1;
+
+    public boolean isEnabled() {
+      return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+      this.enabled = enabled;
+    }
+
+    public int getPartitions() {
+      return partitions;
+    }
+
+    public void setPartitions(int partitions) {
+      this.partitions = partitions;
+    }
+
+    public short getReplicationFactor() {
+      return replicationFactor;
+    }
+
+    public void setReplicationFactor(short replicationFactor) {
+      this.replicationFactor = replicationFactor;
     }
   }
 }

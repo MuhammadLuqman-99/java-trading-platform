@@ -49,6 +49,10 @@ infra:
       mode: fixed
       max-attempts: 2
       fixed-backoff-ms: 100
+    topics:
+      enabled: ${INFRA_KAFKA_TOPICS_ENABLED:true}
+      partitions: ${INFRA_KAFKA_TOPICS_PARTITIONS:3}
+      replication-factor: ${INFRA_KAFKA_TOPICS_REPLICATION_FACTOR:1}
 
 outbox:
   publisher:

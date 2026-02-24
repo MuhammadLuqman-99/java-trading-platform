@@ -15,6 +15,9 @@ class InfraKafkaPropertiesTest {
     assertEquals("cg-default", properties.effectiveConsumerGroupId());
     assertEquals("earliest", properties.effectiveAutoOffsetReset());
     assertTrue(properties.effectiveProducerIdempotenceEnabled());
+    assertTrue(properties.getTopics().isEnabled());
+    assertEquals(3, properties.getTopics().getPartitions());
+    assertEquals(1, properties.getTopics().getReplicationFactor());
   }
 
   @Test

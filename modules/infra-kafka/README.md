@@ -13,6 +13,9 @@ Shared Kafka event contracts and wiring for trading-platform modules.
 - `executions.recorded.dlq.v1`
 - `balances.updated.dlq.v1`
 
+Topic provisioning is managed by `infra-kafka` auto-configuration via `KafkaAdmin.NewTopics`
+when `infra.kafka.topics.enabled=true`.
+
 ## Contracts
 
 - Envelope: `EventEnvelope<T>`
@@ -23,6 +26,15 @@ Shared Kafka event contracts and wiring for trading-platform modules.
   - `OrderUpdatedV1`
   - `ExecutionRecordedV1`
   - `BalanceUpdatedV1`
+
+## Contract Tests
+
+- Payload JSON schemas are stored under:
+  `src/test/resources/contracts/payload-schemas/`
+- Contract tests validate that payload JSON examples conform to these schemas and fail on
+  missing required fields / invalid types.
+- Any payload contract shape change must update both the schema file and
+  `PayloadJsonSchemaContractTest`.
 
 ## Main Components
 
@@ -69,4 +81,8 @@ infra:
       max-backoff-ms: 10000
       multiplier: 2.0
       retryable-exceptions: []
+    topics:
+      enabled: true
+      partitions: 3
+      replication-factor: 1
 ```
