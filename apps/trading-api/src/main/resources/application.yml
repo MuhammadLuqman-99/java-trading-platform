@@ -1,12 +1,31 @@
 spring:
   application:
     name: trading-api
+  mvc:
+    problemdetails:
+      enabled: true
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/trading}
+    username: ${SPRING_DATASOURCE_USERNAME:trading}
+    password: ${SPRING_DATASOURCE_PASSWORD:trading_pass}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${OAUTH2_JWK_SET_URI:http://localhost:8080/realms/trading/protocol/openid-connect/certs}
+
+server:
+  port: ${SERVER_PORT:8081}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
       probes:
@@ -16,6 +35,21 @@ management:
       enabled: true
     readinessstate:
       enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: ${APP_ENVIRONMENT:local}
+  tracing:
+    enabled: ${TRACING_ENABLED:true}
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
 
 springdoc:
   show-actuator: true
+
+idempotency:
+  enabled: ${IDEMPOTENCY_ENABLED:true}
+  required-header: ${IDEMPOTENCY_REQUIRED_HEADER:Idempotency-Key}
+  ttl-hours: ${IDEMPOTENCY_TTL_HOURS:24}
+  opt-in-paths:
+    - /v1/orders/**
