@@ -17,15 +17,15 @@
 
 ---
 
-## Week 1 — Foundation (Days 1–5)
+## Week 1 — Foundation (Days 1–5) ✅
 
-| Day | Dev A | Dev B | Dev C | Output |
-|---|---|---|---|---|
-| 1 | Create Maven parent + module skeletons (`apps/*`, `modules/*`) | Define event contracts + topic names; create `infra-kafka` module skeleton | Create `deploy/docker-compose.yml` (postgres/redis/kafka/keycloak) | Repo builds locally; `docker-compose up` works |
-| 2 | Add Spring Boot app skeleton for `trading-api` (health, version) | Add outbox table migration stub + outbox publisher skeleton service | Wire CI pipeline (build + unit tests) + code style (spotless/checkstyle optional) | CI green; apps start and expose `/actuator/health` |
-| 3 | Add `springdoc-openapi` + basic API groups | Define Kafka client config + producer/consumer base + retry policy | Keycloak realm export (roles, clients) + JWT config notes | Swagger UI visible; Keycloak realm file in repo |
-| 4 | Implement auth guards (role-based) for a sample endpoint | Implement idempotency-key middleware skeleton + persistence API | Observability baseline: JSON logs + tracing/metrics placeholders | Auth flow works (JWT validates); logs structured |
-| 5 | Define domain package structure + error model (RFC7807 style) | Create base “worker” app module (no logic yet) | Add local dev runbook + env var conventions | Docs: how to run, how to auth, how to view Swagger |
+| Day | Dev A | Dev B | Dev C | Output | Status |
+|---|---|---|---|---|---|
+| 1 | Create Maven parent + module skeletons (`apps/*`, `modules/*`) | Define event contracts + topic names; create `infra-kafka` module skeleton | Create `deploy/docker-compose.yml` (postgres/redis/kafka/keycloak) | Repo builds locally; `docker-compose up` works | ✅ Done |
+| 2 | Add Spring Boot app skeleton for `trading-api` (health, version) | Add outbox table migration stub + outbox publisher skeleton service | Wire CI pipeline (build + unit tests) + code style (spotless/checkstyle optional) | CI green; apps start and expose `/actuator/health` | ✅ Done |
+| 3 | Add `springdoc-openapi` + basic API groups | Define Kafka client config + producer/consumer base + retry policy | Keycloak realm export (roles, clients) + JWT config notes | Swagger UI visible; Keycloak realm file in repo | ✅ Done |
+| 4 | Implement auth guards (role-based) for a sample endpoint | Implement idempotency-key middleware skeleton + persistence API | Observability baseline: JSON logs + tracing/metrics placeholders | Auth flow works (JWT validates); logs structured | ✅ Done |
+| 5 | Define domain package structure + error model (RFC7807 style) | Create base “worker” app module (no logic yet) | Add local dev runbook + env var conventions | Docs: how to run, how to auth, how to view Swagger | ✅ Done |
 
 ---
 
