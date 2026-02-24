@@ -2,6 +2,8 @@ package com.tradingplatform.tradingapi.config;
 
 import java.net.URI;
 import com.tradingplatform.domain.orders.OrderDomainException;
+import com.tradingplatform.domain.wallet.InsufficientBalanceException;
+import com.tradingplatform.domain.wallet.WalletDomainException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -119,6 +121,16 @@ public class GlobalExceptionHandler {
         ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     problem.setType(URI.create(TYPE_PREFIX + "order-domain-error"));
     problem.setTitle("Order Validation Error");
+    return problem;
+  }
+
+  @ExceptionHandler(WalletDomainException.class)
+  public ProblemDetail handleWalletDomain(WalletDomainException ex) {
+    HttpStatus status =
+        (ex instanceof InsufficientBalanceException) ? HttpStatus.CONFLICT : HttpStatus.BAD_REQUEST;
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, ex.getMessage());
+    problem.setType(URI.create(TYPE_PREFIX + "wallet-error"));
+    problem.setTitle("Wallet Error");
     return problem;
   }
 

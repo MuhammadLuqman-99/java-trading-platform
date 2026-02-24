@@ -6,6 +6,7 @@ import com.tradingplatform.domain.orders.OrderStatus;
 import com.tradingplatform.domain.orders.OrderType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -97,6 +98,50 @@ public class JdbcOrderRepository implements OrderRepository {
         """;
     jdbcTemplate.update(
         sql, order.status().name(), order.filledQty(), order.exchangeOrderId(), order.updatedAt(), order.id());
+  }
+
+  @Override
+  public List<Order> findByAccountId(
+      UUID accountId, String status, String instrument, int offset, int limit) {
+    StringBuilder sql =
+        new StringBuilder(
+            """
+            SELECT id, account_id, instrument, side, type, qty, price, status,
+                   filled_qty, client_order_id, exchange_order_id, created_at, updated_at
+            FROM orders
+            WHERE account_id = ?
+            """);
+    List<Object> params = new ArrayList<>();
+    params.add(accountId);
+    if (status != null) {
+      sql.append(" AND status = ?");
+      params.add(status);
+    }
+    if (instrument != null) {
+      sql.append(" AND instrument = ?");
+      params.add(instrument);
+    }
+    sql.append(" ORDER BY created_at DESC LIMIT ? OFFSET ?");
+    params.add(limit);
+    params.add(offset);
+    return jdbcTemplate.query(sql.toString(), this::mapRow, params.toArray());
+  }
+
+  @Override
+  public long countByAccountId(UUID accountId, String status, String instrument) {
+    StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM orders WHERE account_id = ?");
+    List<Object> params = new ArrayList<>();
+    params.add(accountId);
+    if (status != null) {
+      sql.append(" AND status = ?");
+      params.add(status);
+    }
+    if (instrument != null) {
+      sql.append(" AND instrument = ?");
+      params.add(instrument);
+    }
+    Long count = jdbcTemplate.queryForObject(sql.toString(), Long.class, params.toArray());
+    return count != null ? count : 0L;
   }
 
   private Order mapRow(ResultSet rs, int rowNum) throws SQLException {

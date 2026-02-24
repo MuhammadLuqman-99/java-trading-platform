@@ -12,6 +12,10 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   security:
     oauth2:
       resourceserver:
@@ -51,5 +55,12 @@ idempotency:
   enabled: ${IDEMPOTENCY_ENABLED:true}
   required-header: ${IDEMPOTENCY_REQUIRED_HEADER:Idempotency-Key}
   ttl-hours: ${IDEMPOTENCY_TTL_HOURS:24}
+  opt-in-paths:
+    - /v1/orders/**
+
+rate-limit:
+  enabled: ${RATE_LIMIT_ENABLED:false}
+  max-requests: ${RATE_LIMIT_MAX_REQUESTS:50}
+  window-seconds: ${RATE_LIMIT_WINDOW_SECONDS:60}
   opt-in-paths:
     - /v1/orders/**

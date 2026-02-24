@@ -1,19 +1,22 @@
 package com.tradingplatform.tradingapi;
 
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.mockito.Mockito.when;
 
 import com.tradingplatform.domain.orders.Order;
 import com.tradingplatform.domain.orders.OrderSide;
+import com.tradingplatform.domain.orders.OrderStatus;
 import com.tradingplatform.domain.orders.OrderType;
 import com.tradingplatform.tradingapi.config.RealmRoleGrantedAuthoritiesConverter;
 import com.tradingplatform.tradingapi.orders.OrderApplicationService;
+import com.tradingplatform.tradingapi.wallet.WalletReservationService;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -30,6 +33,9 @@ import org.springframework.test.web.servlet.MockMvc;
 class TradingApiSecurityTest {
   @Autowired private MockMvc mockMvc;
   @MockBean private OrderApplicationService orderApplicationService;
+  @MockBean private WalletReservationService walletReservationService;
+
+  // ---- Admin endpoint tests ----
 
   @Test
   void adminPingShouldReturnUnauthorizedWithoutToken() throws Exception {
@@ -80,6 +86,8 @@ class TradingApiSecurityTest {
         .andExpect(jsonPath("$.scope").value("admin"));
   }
 
+  // ---- Public endpoint tests ----
+
   @Test
   void publicEndpointsShouldRemainAccessibleWithoutToken() throws Exception {
     mockMvc.perform(get("/v1/version")).andExpect(status().isOk());
@@ -89,6 +97,8 @@ class TradingApiSecurityTest {
     mockMvc.perform(get("/v3/api-docs/ops")).andExpect(status().isOk());
     mockMvc.perform(get("/swagger-ui.html")).andExpect(status().is3xxRedirection());
   }
+
+  // ---- Create order tests ----
 
   @Test
   void ordersCreateShouldReturnUnauthorizedWithoutToken() throws Exception {
@@ -117,29 +127,140 @@ class TradingApiSecurityTest {
   @Test
   void ordersCreateShouldReturnAcceptedForTraderRole() throws Exception {
     when(orderApplicationService.createOrder(org.mockito.ArgumentMatchers.any()))
-        .thenReturn(
-            Order.createNew(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                "BTCUSDT",
-                OrderSide.BUY,
-                OrderType.MARKET,
-                new BigDecimal("0.1"),
-                null,
-                "client-1",
-                Instant.now()));
+        .thenReturn(stubOrder());
 
     mockMvc
         .perform(
             post("/v1/orders")
-                .with(
-                    jwt()
-                        .jwt(jwt -> jwt.claim("realm_access", Map.of("roles", List.of("TRADER"))))
-                        .authorities(new RealmRoleGrantedAuthoritiesConverter()))
+                .with(traderJwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(validOrderRequestJson()))
         .andExpect(status().isAccepted())
         .andExpect(jsonPath("$.orderId").exists());
+  }
+
+  // ---- Cancel order tests ----
+
+  @Test
+  void cancelOrderShouldReturnUnauthorizedWithoutToken() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/orders/" + UUID.randomUUID() + "/cancel")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validCancelRequestJson()))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void cancelOrderShouldReturnForbiddenForNonTraderRole() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/orders/" + UUID.randomUUID() + "/cancel")
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("realm_access", Map.of("roles", List.of("VIEWER"))))
+                        .authorities(new RealmRoleGrantedAuthoritiesConverter()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validCancelRequestJson()))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void cancelOrderShouldReturnOkForTraderRole() throws Exception {
+    Order canceled = stubCanceledOrder();
+    when(orderApplicationService.cancelOrder(org.mockito.ArgumentMatchers.any()))
+        .thenReturn(canceled);
+
+    mockMvc
+        .perform(
+            post("/v1/orders/" + canceled.id() + "/cancel")
+                .with(traderJwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validCancelRequestJson()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.orderId").value(canceled.id().toString()))
+        .andExpect(jsonPath("$.status").value("CANCELED"));
+  }
+
+  // ---- Get order tests ----
+
+  @Test
+  void getOrderShouldReturnUnauthorizedWithoutToken() throws Exception {
+    mockMvc
+        .perform(get("/v1/orders/" + UUID.randomUUID()))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void getOrderShouldReturnOkForTraderRole() throws Exception {
+    Order order = stubOrder();
+    when(orderApplicationService.findById(order.id())).thenReturn(order);
+
+    mockMvc
+        .perform(get("/v1/orders/" + order.id()).with(traderJwt()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(order.id().toString()))
+        .andExpect(jsonPath("$.instrument").value("BTCUSDT"));
+  }
+
+  // ---- List orders tests ----
+
+  @Test
+  void listOrdersShouldReturnUnauthorizedWithoutToken() throws Exception {
+    mockMvc
+        .perform(get("/v1/orders").param("accountId", UUID.randomUUID().toString()))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void listOrdersShouldReturnOkForTraderRole() throws Exception {
+    UUID accountId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    when(orderApplicationService.findByAccountId(
+            org.mockito.ArgumentMatchers.eq(accountId),
+            org.mockito.ArgumentMatchers.isNull(),
+            org.mockito.ArgumentMatchers.isNull(),
+            org.mockito.ArgumentMatchers.eq(0),
+            org.mockito.ArgumentMatchers.eq(20)))
+        .thenReturn(Collections.emptyList());
+    when(orderApplicationService.countByAccountId(
+            org.mockito.ArgumentMatchers.eq(accountId),
+            org.mockito.ArgumentMatchers.isNull(),
+            org.mockito.ArgumentMatchers.isNull()))
+        .thenReturn(0L);
+
+    mockMvc
+        .perform(
+            get("/v1/orders").param("accountId", accountId.toString()).with(traderJwt()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.orders").isArray())
+        .andExpect(jsonPath("$.page").value(0))
+        .andExpect(jsonPath("$.totalElements").value(0));
+  }
+
+  // ---- Helpers ----
+
+  private static org.springframework.test.web.servlet.request.RequestPostProcessor traderJwt() {
+    return jwt()
+        .jwt(jwt -> jwt.claim("realm_access", Map.of("roles", List.of("TRADER"))))
+        .authorities(new RealmRoleGrantedAuthoritiesConverter());
+  }
+
+  private static Order stubOrder() {
+    return Order.createNew(
+        UUID.fromString("22222222-2222-2222-2222-222222222222"),
+        UUID.fromString("11111111-1111-1111-1111-111111111111"),
+        "BTCUSDT",
+        OrderSide.BUY,
+        OrderType.MARKET,
+        new BigDecimal("0.1"),
+        null,
+        "client-1",
+        Instant.now());
+  }
+
+  private static Order stubCanceledOrder() {
+    Order order = stubOrder();
+    return order.transitionTo(OrderStatus.CANCELED, null, null, Instant.now());
   }
 
   private static String validOrderRequestJson() {
@@ -150,6 +271,15 @@ class TradingApiSecurityTest {
           "side":"BUY",
           "type":"MARKET",
           "qty":0.1
+        }
+        """;
+  }
+
+  private static String validCancelRequestJson() {
+    return """
+        {
+          "accountId":"11111111-1111-1111-1111-111111111111",
+          "reason":"user_requested"
         }
         """;
   }

@@ -10,6 +10,8 @@ import com.tradingplatform.domain.orders.OrderDomainException;
 import com.tradingplatform.domain.orders.OrderSide;
 import com.tradingplatform.domain.orders.OrderStatus;
 import com.tradingplatform.domain.orders.OrderType;
+import com.tradingplatform.tradingapi.wallet.JdbcWalletRepository;
+import com.tradingplatform.tradingapi.wallet.WalletReservationService;
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
@@ -54,11 +56,14 @@ class OrderApplicationServiceIntegrationTest {
 
     jdbcTemplate = new JdbcTemplate(dataSource);
     ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+    WalletReservationService walletReservationService =
+        new WalletReservationService(new JdbcWalletRepository(jdbcTemplate));
     service =
         new OrderApplicationService(
             new JdbcOrderRepository(jdbcTemplate),
             new JdbcOrderEventRepository(jdbcTemplate),
             new JdbcOutboxAppendRepository(jdbcTemplate, objectMapper),
+            walletReservationService,
             objectMapper);
     accountId = createAccount();
   }
