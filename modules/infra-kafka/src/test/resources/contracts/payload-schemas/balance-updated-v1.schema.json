@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BalanceUpdatedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "accountId": {
+      "type": "string"
+    },
+    "asset": {
+      "type": "string"
+    },
+    "available": {
+      "type": "number"
+    },
+    "reserved": {
+      "type": "number"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "asOf": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "accountId",
+    "asset",
+    "available",
+    "reserved",
+    "reason",
+    "asOf"
+  ]
+}

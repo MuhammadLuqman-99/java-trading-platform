@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OrderSubmittedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "orderId": {
+      "type": "string"
+    },
+    "accountId": {
+      "type": "string"
+    },
+    "instrument": {
+      "type": "string"
+    },
+    "side": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string"
+    },
+    "qty": {
+      "type": "number"
+    },
+    "price": {
+      "type": "number"
+    },
+    "submittedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "orderId",
+    "accountId",
+    "instrument",
+    "side",
+    "type",
+    "qty",
+    "price",
+    "submittedAt"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExecutionRecordedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "executionId": {
+      "type": "string"
+    },
+    "orderId": {
+      "type": "string"
+    },
+    "accountId": {
+      "type": "string"
+    },
+    "tradeId": {
+      "type": "string"
+    },
+    "qty": {
+      "type": "number"
+    },
+    "price": {
+      "type": "number"
+    },
+    "feeAsset": {
+      "type": "string"
+    },
+    "feeAmount": {
+      "type": "number"
+    },
+    "executedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "executionId",
+    "orderId",
+    "accountId",
+    "tradeId",
+    "qty",
+    "price",
+    "feeAsset",
+    "feeAmount",
+    "executedAt"
+  ]
+}
