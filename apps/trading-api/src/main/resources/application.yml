@@ -16,3 +16,6 @@ management:
       enabled: true
     readinessstate:
       enabled: true
+
+springdoc:
+  show-actuator: true

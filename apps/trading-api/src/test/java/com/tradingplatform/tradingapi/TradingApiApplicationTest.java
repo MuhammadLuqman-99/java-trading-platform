@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,6 +41,42 @@ class TradingApiApplicationTest {
     assertEquals("trading-api", application);
     assertTrue(version instanceof String);
     assertTrue(!((String) version).isBlank());
+  }
+
+  @Test
+  void openApiDocsShouldBeExposed() {
+    ResponseEntity<Map> response = restTemplate.getForEntity(baseUrl("/v3/api-docs"), Map.class);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertNotNull(response.getBody());
+    assertNotNull(response.getBody().get("openapi"));
+  }
+
+  @Test
+  void publicApiGroupShouldExcludeVersionEndpoint() {
+    ResponseEntity<Map> response = restTemplate.getForEntity(baseUrl("/v3/api-docs/public"), Map.class);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    Set<String> paths = openApiPaths(response.getBody());
+    assertTrue(!paths.contains("/v1/version"));
+  }
+
+  @Test
+  void opsApiGroupShouldIncludeVersionAndHealthEndpoints() {
+    ResponseEntity<Map> response = restTemplate.getForEntity(baseUrl("/v3/api-docs/ops"), Map.class);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    Set<String> paths = openApiPaths(response.getBody());
+    assertTrue(paths.contains("/v1/version"));
+    assertTrue(paths.stream().anyMatch(path -> path.startsWith("/actuator/health")));
+  }
+
+  @SuppressWarnings("unchecked")
+  private Set<String> openApiPaths(Map body) {
+    assertNotNull(body);
+    Object paths = body.get("paths");
+    assertTrue(paths instanceof Map);
+    return ((Map<String, Object>) paths).keySet();
   }
 
   private String baseUrl(String path) {
