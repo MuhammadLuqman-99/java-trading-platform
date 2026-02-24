@@ -8,24 +8,25 @@ import com.tradingplatform.infra.kafka.errors.RetryPolicy;
 import com.tradingplatform.infra.kafka.observability.KafkaTelemetry;
 import com.tradingplatform.infra.kafka.serde.EventEnvelopeJsonCodec;
 import com.tradingplatform.infra.kafka.topics.TopicNames;
+import com.tradingplatform.worker.execution.ExecutionOrderAdapter;
+import com.tradingplatform.worker.execution.SubmitOrderCommand;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
 @Component
 public class OrderSubmittedConsumer {
-  private static final Logger log = LoggerFactory.getLogger(OrderSubmittedConsumer.class);
-
   private final EventConsumerAdapter<OrderSubmittedV1> adapter;
+  private final ExecutionOrderAdapter executionOrderAdapter;
 
   public OrderSubmittedConsumer(
       EventEnvelopeJsonCodec codec,
       DeadLetterPublisher deadLetterPublisher,
       RetryPolicy retryPolicy,
-      KafkaTelemetry telemetry) {
+      KafkaTelemetry telemetry,
+      ExecutionOrderAdapter executionOrderAdapter) {
+    this.executionOrderAdapter = executionOrderAdapter;
     this.adapter =
         new EventConsumerAdapter<>(
             OrderSubmittedV1.class,
@@ -50,12 +51,18 @@ public class OrderSubmittedConsumer {
   private void handleEvent(
       com.tradingplatform.infra.kafka.contract.EventEnvelope<OrderSubmittedV1> envelope) {
     OrderSubmittedV1 payload = envelope.payload();
-    log.info(
-        "Received OrderSubmitted event orderId={} accountId={} instrument={} side={} qty={}",
-        payload.orderId(),
-        payload.accountId(),
-        payload.instrument(),
-        payload.side(),
-        payload.qty());
+    SubmitOrderCommand command =
+        new SubmitOrderCommand(
+            payload.orderId(),
+            payload.accountId(),
+            payload.instrument(),
+            payload.side(),
+            payload.type(),
+            payload.qty(),
+            payload.price(),
+            payload.submittedAt(),
+            envelope.correlationId(),
+            envelope.eventId());
+    executionOrderAdapter.submitOrder(command);
   }
 }
