@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.tradingplatform.infra.kafka.contract.payload.BalanceUpdatedV1;
 import com.tradingplatform.infra.kafka.contract.payload.ExecutionRecordedV1;
+import com.tradingplatform.infra.kafka.contract.payload.ExecutionRecordedV2;
 import com.tradingplatform.infra.kafka.contract.payload.OrderSubmittedV1;
 import com.tradingplatform.infra.kafka.contract.payload.OrderSubmittedV2;
 import com.tradingplatform.infra.kafka.contract.payload.OrderUpdatedV1;
 import com.tradingplatform.infra.kafka.contract.payload.OrderUpdatedV2;
+import com.tradingplatform.infra.kafka.contract.payload.OrderUpdatedV3;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -20,7 +22,10 @@ class PayloadJsonSchemaContractTest {
   private static final String ORDER_UPDATED_V2_SCHEMA = BASE_PATH + "order-updated-v2.schema.json";
   private static final String EXECUTION_RECORDED_SCHEMA =
       BASE_PATH + "execution-recorded-v1.schema.json";
+  private static final String EXECUTION_RECORDED_V2_SCHEMA =
+      BASE_PATH + "execution-recorded-v2.schema.json";
   private static final String BALANCE_UPDATED_SCHEMA = BASE_PATH + "balance-updated-v1.schema.json";
+  private static final String ORDER_UPDATED_V3_SCHEMA = BASE_PATH + "order-updated-v3.schema.json";
 
   private static final Map<String, String> PAYLOAD_SCHEMAS =
       Map.of(
@@ -29,6 +34,8 @@ class PayloadJsonSchemaContractTest {
           OrderUpdatedV1.class.getSimpleName(), ORDER_UPDATED_SCHEMA,
           OrderUpdatedV2.class.getSimpleName(), ORDER_UPDATED_V2_SCHEMA,
           ExecutionRecordedV1.class.getSimpleName(), EXECUTION_RECORDED_SCHEMA,
+          ExecutionRecordedV2.class.getSimpleName(), EXECUTION_RECORDED_V2_SCHEMA,
+          OrderUpdatedV3.class.getSimpleName(), ORDER_UPDATED_V3_SCHEMA,
           BalanceUpdatedV1.class.getSimpleName(), BALANCE_UPDATED_SCHEMA);
 
   @Test
@@ -195,6 +202,51 @@ class PayloadJsonSchemaContractTest {
   }
 
   @Test
+  void executionRecordedV2Schema_shouldAcceptValidPayload() {
+    String payload =
+        """
+        {
+          "executionId": "exec-5002",
+          "orderId": "ord-1001",
+          "accountId": "acc-2001",
+          "exchangeName": "BINANCE",
+          "exchangeOrderId": "100200300",
+          "exchangeClientOrderId": "client-ord-1001",
+          "exchangeTradeId": "501700",
+          "rawExecutionType": "TRADE",
+          "rawOrderStatus": "PARTIALLY_FILLED",
+          "qty": 0.005,
+          "price": 42100.00,
+          "feeAsset": "USDT",
+          "feeAmount": 0.21,
+          "executedAt": "2026-02-25T12:31:00Z"
+        }
+        """;
+    JsonSchemaValidatorSupport.assertValid(EXECUTION_RECORDED_V2_SCHEMA, payload);
+  }
+
+  @Test
+  void orderUpdatedV3Schema_shouldAcceptValidPayload() {
+    String payload =
+        """
+        {
+          "orderId": "ord-1001",
+          "accountId": "acc-2001",
+          "status": "PARTIALLY_FILLED",
+          "filledQty": 0.005,
+          "remainingQty": 0.005,
+          "exchangeName": "BINANCE",
+          "exchangeOrderId": "100200300",
+          "exchangeClientOrderId": "client-ord-1001",
+          "rawExecutionType": "TRADE",
+          "rawOrderStatus": "PARTIALLY_FILLED",
+          "updatedAt": "2026-02-25T12:31:00Z"
+        }
+        """;
+    JsonSchemaValidatorSupport.assertValid(ORDER_UPDATED_V3_SCHEMA, payload);
+  }
+
+  @Test
   void balanceUpdatedV1Schema_shouldAcceptValidPayload() {
     String payload =
         """
@@ -234,7 +286,9 @@ class PayloadJsonSchemaContractTest {
             OrderSubmittedV2.class.getSimpleName(),
             OrderUpdatedV1.class.getSimpleName(),
             OrderUpdatedV2.class.getSimpleName(),
+            OrderUpdatedV3.class.getSimpleName(),
             ExecutionRecordedV1.class.getSimpleName(),
+            ExecutionRecordedV2.class.getSimpleName(),
             BalanceUpdatedV1.class.getSimpleName());
 
     assertEquals(expectedPayloadTypes, PAYLOAD_SCHEMAS.keySet());

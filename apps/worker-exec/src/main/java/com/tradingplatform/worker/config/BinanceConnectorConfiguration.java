@@ -2,11 +2,13 @@ package com.tradingplatform.worker.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tradingplatform.integration.binance.BinanceConnectorProperties;
+import com.tradingplatform.integration.binance.BinanceExecutionReportParser;
 import com.tradingplatform.integration.binance.BinanceOrderGateway;
 import com.tradingplatform.integration.binance.BinanceRequestSigner;
 import com.tradingplatform.integration.binance.DatabaseBackedExchangeOrderStatusMapper;
 import com.tradingplatform.integration.binance.ExchangeOrderStatusMappingRefreshTask;
 import com.tradingplatform.integration.binance.ExchangeOrderStatusMappingRepository;
+import com.tradingplatform.integration.binance.JacksonBinanceExecutionReportParser;
 import com.tradingplatform.integration.binance.JdbcExchangeOrderStatusMappingRepository;
 import com.tradingplatform.integration.binance.JitteredExponentialBackoff;
 import com.tradingplatform.integration.binance.RateLimitRetryExecutor;
@@ -99,6 +101,12 @@ public class BinanceConnectorConfiguration {
     requestFactory.setConnectTimeout(timeout);
     requestFactory.setReadTimeout(timeout);
     return RestClient.builder().baseUrl(properties.getBaseUrl()).requestFactory(requestFactory).build();
+  }
+
+  @Bean
+  @ConditionalOnMissingBean
+  public BinanceExecutionReportParser binanceExecutionReportParser(ObjectMapper objectMapper) {
+    return new JacksonBinanceExecutionReportParser(objectMapper);
   }
 
   @Bean

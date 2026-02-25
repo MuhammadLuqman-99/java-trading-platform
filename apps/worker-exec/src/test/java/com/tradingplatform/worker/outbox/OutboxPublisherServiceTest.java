@@ -113,4 +113,35 @@ class OutboxPublisherServiceTest {
     verify(outboxRepository).markFailed(eq(outboxId), errorCaptor.capture());
     assertTrue(errorCaptor.getValue().contains("kafka unavailable"));
   }
+
+  @Test
+  void shouldInferEventVersionFromTopicSuffix() {
+    UUID outboxId = UUID.randomUUID();
+    OutboxEventRecord record =
+        new OutboxEventRecord(
+            outboxId,
+            "ORDER",
+            "ord-1003",
+            "OrderUpdated",
+            "{\"orderId\":\"ord-1003\"}",
+            "orders.updated.v3",
+            "ord-1003",
+            "NEW",
+            0,
+            Instant.parse("2026-02-24T12:02:00Z"));
+
+    when(outboxRepository.findPendingBatch(50)).thenReturn(List.of(record));
+    CompletableFuture<SendResult<String, String>> successFuture =
+        CompletableFuture.completedFuture(null);
+    when(eventPublisher.publish(eq("orders.updated.v3"), eq("ord-1003"), any(EventEnvelope.class)))
+        .thenReturn(successFuture);
+
+    service.publishPendingEvents();
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<EventEnvelope<?>> envelopeCaptor = ArgumentCaptor.forClass(EventEnvelope.class);
+    verify(eventPublisher)
+        .publish(eq("orders.updated.v3"), eq("ord-1003"), envelopeCaptor.capture());
+    assertEquals(3, envelopeCaptor.getValue().eventVersion());
+  }
 }

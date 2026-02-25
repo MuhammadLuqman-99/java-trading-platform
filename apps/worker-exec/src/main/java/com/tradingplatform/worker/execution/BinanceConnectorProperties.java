@@ -16,6 +16,7 @@ public class BinanceConnectorProperties {
   private Catchup catchup = new Catchup();
   private Retry retry = new Retry();
   private Health health = new Health();
+  private Ws ws = new Ws();
 
   public boolean isEnabled() {
     return enabled;
@@ -105,9 +106,19 @@ public class BinanceConnectorProperties {
     this.health = health;
   }
 
+  public Ws getWs() {
+    return ws;
+  }
+
+  public void setWs(Ws ws) {
+    this.ws = ws;
+  }
+
   public static class Catchup {
     private long fixedDelayMs = 30000L;
     private long recentTradesLookbackMinutes = 30L;
+    private long replayPollDelayMs = 5000L;
+    private long recoveryDedupeWindowMs = 120000L;
 
     public long getFixedDelayMs() {
       return fixedDelayMs;
@@ -123,6 +134,22 @@ public class BinanceConnectorProperties {
 
     public void setRecentTradesLookbackMinutes(long recentTradesLookbackMinutes) {
       this.recentTradesLookbackMinutes = recentTradesLookbackMinutes;
+    }
+
+    public long getReplayPollDelayMs() {
+      return replayPollDelayMs;
+    }
+
+    public void setReplayPollDelayMs(long replayPollDelayMs) {
+      this.replayPollDelayMs = replayPollDelayMs;
+    }
+
+    public long getRecoveryDedupeWindowMs() {
+      return recoveryDedupeWindowMs;
+    }
+
+    public void setRecoveryDedupeWindowMs(long recoveryDedupeWindowMs) {
+      this.recoveryDedupeWindowMs = recoveryDedupeWindowMs;
     }
   }
 
@@ -174,6 +201,63 @@ public class BinanceConnectorProperties {
 
     public void setDownThresholdMinutes(long downThresholdMinutes) {
       this.downThresholdMinutes = downThresholdMinutes;
+    }
+  }
+
+  public static class Ws {
+    private boolean enabled = false;
+    private String baseUrl = "wss://stream.binance.com:9443";
+    private long reconnectBaseBackoffMs = 250L;
+    private long reconnectMaxBackoffMs = 30000L;
+    private long stableResetSeconds = 60L;
+    private long keepaliveIntervalSeconds = 1500L;
+
+    public boolean isEnabled() {
+      return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+      this.enabled = enabled;
+    }
+
+    public String getBaseUrl() {
+      return baseUrl;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+      this.baseUrl = baseUrl;
+    }
+
+    public long getReconnectBaseBackoffMs() {
+      return reconnectBaseBackoffMs;
+    }
+
+    public void setReconnectBaseBackoffMs(long reconnectBaseBackoffMs) {
+      this.reconnectBaseBackoffMs = reconnectBaseBackoffMs;
+    }
+
+    public long getReconnectMaxBackoffMs() {
+      return reconnectMaxBackoffMs;
+    }
+
+    public void setReconnectMaxBackoffMs(long reconnectMaxBackoffMs) {
+      this.reconnectMaxBackoffMs = reconnectMaxBackoffMs;
+    }
+
+    public long getStableResetSeconds() {
+      return stableResetSeconds;
+    }
+
+    public void setStableResetSeconds(long stableResetSeconds) {
+      this.stableResetSeconds = stableResetSeconds;
+    }
+
+    public long getKeepaliveIntervalSeconds() {
+      return keepaliveIntervalSeconds;
+    }
+
+    public void setKeepaliveIntervalSeconds(long keepaliveIntervalSeconds) {
+      this.keepaliveIntervalSeconds = keepaliveIntervalSeconds;
     }
   }
 }

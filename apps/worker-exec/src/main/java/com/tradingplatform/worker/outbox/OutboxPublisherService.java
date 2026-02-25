@@ -117,9 +117,19 @@ public class OutboxPublisherService {
   }
 
   private static int eventVersionFor(String topic) {
-    if (topic != null && topic.endsWith(".v2")) {
-      return 2;
+    if (topic == null || topic.isBlank()) {
+      return 1;
     }
-    return 1;
+    int marker = topic.lastIndexOf(".v");
+    if (marker < 0 || marker + 2 >= topic.length()) {
+      return 1;
+    }
+    String suffix = topic.substring(marker + 2);
+    try {
+      int parsed = Integer.parseInt(suffix);
+      return parsed >= 1 ? parsed : 1;
+    } catch (NumberFormatException ignored) {
+      return 1;
+    }
   }
 }

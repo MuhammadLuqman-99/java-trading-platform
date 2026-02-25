@@ -228,8 +228,14 @@ public class HttpBinanceOrderClient implements BinanceOrderClient, BinancePollin
       String tradeId = textValue(node, "id");
       String orderId = textValue(node, "orderId");
       String side = node.path("isBuyer").asBoolean() ? "BUY" : "SELL";
+      BigDecimal qty = decimalValue(node, "qty");
+      BigDecimal price = decimalValue(node, "price");
+      String feeAsset = optionalTextValue(node, "commissionAsset");
+      BigDecimal feeAmount = optionalDecimalValue(node, "commission");
       Instant tradeTime = Instant.ofEpochMilli(longValue(node, "time"));
-      snapshots.add(new BinanceTradeSnapshot(symbol, tradeId, orderId, side, tradeTime));
+      snapshots.add(
+          new BinanceTradeSnapshot(
+              symbol, tradeId, orderId, side, qty, price, feeAsset, feeAmount, tradeTime));
     }
     return snapshots;
   }
@@ -297,5 +303,47 @@ public class HttpBinanceOrderClient implements BinanceOrderClient, BinancePollin
       throw new IllegalStateException("Binance response missing numeric field: " + field);
     }
     return node.get(field).asLong();
+  }
+
+  private static BigDecimal decimalValue(JsonNode node, String field) {
+    if (!node.hasNonNull(field)) {
+      throw new IllegalStateException("Binance response missing field: " + field);
+    }
+    String raw = node.get(field).asText();
+    if (raw == null || raw.isBlank()) {
+      throw new IllegalStateException("Binance response has blank field: " + field);
+    }
+    try {
+      return new BigDecimal(raw);
+    } catch (NumberFormatException ex) {
+      throw new IllegalStateException("Binance response has invalid decimal field: " + field, ex);
+    }
+  }
+
+  private static BigDecimal optionalDecimalValue(JsonNode node, String field) {
+    if (!node.hasNonNull(field)) {
+      return null;
+    }
+    String raw = node.get(field).asText();
+    if (raw == null || raw.isBlank()) {
+      return null;
+    }
+    try {
+      return new BigDecimal(raw);
+    } catch (NumberFormatException ex) {
+      throw new IllegalStateException("Binance response has invalid decimal field: " + field, ex);
+    }
+  }
+
+  private static String optionalTextValue(JsonNode node, String field) {
+    if (!node.hasNonNull(field)) {
+      return null;
+    }
+    String value = node.get(field).asText();
+    if (value == null) {
+      return null;
+    }
+    String trimmed = value.trim();
+    return trimmed.isBlank() ? null : trimmed;
   }
 }

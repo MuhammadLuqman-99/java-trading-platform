@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OrderUpdatedV3",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "orderId": {
+      "type": "string"
+    },
+    "accountId": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "filledQty": {
+      "type": "number"
+    },
+    "remainingQty": {
+      "type": "number"
+    },
+    "exchangeName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "exchangeOrderId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "exchangeClientOrderId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "rawExecutionType": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "rawOrderStatus": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "orderId",
+    "accountId",
+    "status",
+    "filledQty",
+    "remainingQty",
+    "exchangeName",
+    "exchangeOrderId",
+    "exchangeClientOrderId",
+    "rawExecutionType",
+    "rawOrderStatus",
+    "updatedAt"
+  ]
+}

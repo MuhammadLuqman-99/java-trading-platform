@@ -174,6 +174,10 @@ class HttpBinanceOrderClientTest {
                     "id":111,
                     "orderId":222,
                     "symbol":"BTCUSDT",
+                    "qty":"0.005",
+                    "price":"42500.10",
+                    "commission":"0.00001",
+                    "commissionAsset":"BNB",
                     "isBuyer":true,
                     "time":1771977601000
                   }
@@ -189,6 +193,10 @@ class HttpBinanceOrderClientTest {
     assertEquals("111", trade.tradeId());
     assertEquals("222", trade.exchangeOrderId());
     assertEquals("BUY", trade.side());
+    assertEquals(0, new BigDecimal("0.005").compareTo(trade.qty()));
+    assertEquals(0, new BigDecimal("42500.10").compareTo(trade.price()));
+    assertEquals("BNB", trade.feeAsset());
+    assertEquals(0, new BigDecimal("0.00001").compareTo(trade.feeAmount()));
     assertEquals(Instant.parse("2026-02-25T00:00:01Z"), trade.tradeTime());
 
     RecordedRequest recorded = server.takeRequest();

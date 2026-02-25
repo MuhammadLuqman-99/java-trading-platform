@@ -76,6 +76,18 @@ curl -X POST http://localhost:8081/v1/admin/funding/adjustments \
   }'
 ```
 
+### 6c. Trigger connector catch-up replay (admin)
+
+```bash
+curl -X POST http://localhost:8081/v1/admin/connector/catch-up/replay \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "connector":"binance-spot",
+    "reason":"manual_reconcile_after_incident"
+  }'
+```
+
 ### 7. Get a JWT token and test auth
 
 ```bash
@@ -114,10 +126,19 @@ All apps use `${VAR:default}` convention. See `deploy/.env.example` for infrastr
 | `SPRING_DATASOURCE_PASSWORD` | `trading_pass` | DB password |
 | `OAUTH2_JWK_SET_URI` | `http://localhost:8080/realms/trading/...` | Keycloak JWKS endpoint |
 | `WORKER_EXECUTION_ADAPTER` | `logging` | Worker adapter mode (`logging` or `binance`) |
+| `CONNECTOR_BINANCE_ENABLED` | `false` | Enable Binance connector polling and integration beans |
 | `CONNECTOR_BINANCE_API_KEY` | `` | Binance API key (env secret) |
 | `CONNECTOR_BINANCE_API_SECRET` | `` | Binance API secret (env secret) |
 | `CONNECTOR_BINANCE_API_KEY_FILE` | `` | File path for Binance API key (mounted secret) |
 | `CONNECTOR_BINANCE_API_SECRET_FILE` | `` | File path for Binance API secret (mounted secret) |
+| `CONNECTOR_BINANCE_WS_ENABLED` | `false` | Enable Binance user-stream WS client |
+| `CONNECTOR_BINANCE_WS_BASE_URL` | `wss://stream.binance.com:9443` | Binance user-stream WS base URL |
+| `CONNECTOR_BINANCE_WS_RECONNECT_BASE_BACKOFF_MS` | `250` | WS reconnect base backoff |
+| `CONNECTOR_BINANCE_WS_RECONNECT_MAX_BACKOFF_MS` | `30000` | WS reconnect max backoff |
+| `CONNECTOR_BINANCE_WS_STABLE_RESET_SECONDS` | `60` | Stable duration before reconnect backoff reset |
+| `CONNECTOR_BINANCE_WS_KEEPALIVE_INTERVAL_SECONDS` | `1500` | ListenKey keepalive interval |
+| `CONNECTOR_BINANCE_CATCHUP_REPLAY_POLL_DELAY_MS` | `5000` | Replay queue polling interval in worker |
+| `CONNECTOR_BINANCE_CATCHUP_RECOVERY_DEDUPE_WINDOW_MS` | `120000` | Dedupe window for auto-recovery replay requests |
 | `TRACING_ENABLED` | `true` | Enable distributed tracing |
 | `TRACING_SAMPLING_PROBABILITY` | `1.0` | Trace sampling rate |
 
@@ -199,6 +220,25 @@ mvn verify
 Integration tests require Docker to be running locally because they use Testcontainers
 for PostgreSQL and Kafka.
 
+### Chaos: Worker WS Recovery
+
+Run a kill-and-recover scenario for the worker container and assert WS reconnection:
+
+```bash
+# Bash
+RECOVERY_TIMEOUT_SECONDS=90 scripts/chaos/ws_worker_recover.sh
+
+# PowerShell
+powershell -ExecutionPolicy Bypass -File scripts/chaos/ws_worker_recover.ps1
+```
+
+Required runtime settings:
+
+- `WORKER_EXECUTION_ADAPTER=binance`
+- `CONNECTOR_BINANCE_ENABLED=true`
+- `CONNECTOR_BINANCE_WS_ENABLED=true`
+- Binance API key/secret from env or secret files.
+
 ## CI and Code Style
 
 This repository uses GitHub Actions to enforce build, unit tests, and formatting checks on pull requests and pushes to `master`/`main`.
@@ -270,6 +310,13 @@ Included:
 - Trace/span placeholders in logs (`traceId`, `spanId`)
 - Actuator endpoints: `health`, `info`, `prometheus`
 - Kafka telemetry placeholders via `KafkaTelemetry` + Micrometer counters/timers
+- Connector catch-up/replay metrics:
+  - `worker.connector.poll.total`
+  - `worker.connector.poll.duration`
+  - `worker.connector.errors.total`
+  - `worker.connector.replay.requests.total`
+  - `worker.connector.replay.duration`
+  - `worker.connector.replay.queue.depth`
 
 Useful local checks:
 
@@ -285,3 +332,5 @@ Tracing placeholder environment variables:
 - `TRACING_ENABLED` (default `true`)
 - `TRACING_SAMPLING_PROBABILITY` (default `1.0`)
 - `MANAGEMENT_OTLP_TRACING_ENDPOINT` (optional placeholder for OTLP exporter wiring)
+
+Connector alert thresholds and log-based rule notes: `docs/connector-alert-thresholds.md`.

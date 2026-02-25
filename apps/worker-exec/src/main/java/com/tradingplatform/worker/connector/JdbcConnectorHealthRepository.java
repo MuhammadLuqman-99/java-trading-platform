@@ -30,6 +30,13 @@ public class JdbcConnectorHealthRepository implements ConnectorHealthRepository 
                last_error_message,
                open_orders_fetched,
                recent_trades_fetched,
+               ws_connection_state,
+               last_ws_connected_at,
+               last_ws_disconnected_at,
+               last_ws_error_at,
+               last_ws_error_code,
+               last_ws_error_message,
+               ws_reconnect_attempts,
                updated_at
         FROM connector_health_state
         WHERE connector_name = ?
@@ -56,8 +63,15 @@ public class JdbcConnectorHealthRepository implements ConnectorHealthRepository 
             last_error_message,
             open_orders_fetched,
             recent_trades_fetched,
+            ws_connection_state,
+            last_ws_connected_at,
+            last_ws_disconnected_at,
+            last_ws_error_at,
+            last_ws_error_code,
+            last_ws_error_message,
+            ws_reconnect_attempts,
             updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (connector_name) DO UPDATE SET
             status = EXCLUDED.status,
             last_success_at = EXCLUDED.last_success_at,
@@ -68,6 +82,13 @@ public class JdbcConnectorHealthRepository implements ConnectorHealthRepository 
             last_error_message = EXCLUDED.last_error_message,
             open_orders_fetched = EXCLUDED.open_orders_fetched,
             recent_trades_fetched = EXCLUDED.recent_trades_fetched,
+            ws_connection_state = EXCLUDED.ws_connection_state,
+            last_ws_connected_at = EXCLUDED.last_ws_connected_at,
+            last_ws_disconnected_at = EXCLUDED.last_ws_disconnected_at,
+            last_ws_error_at = EXCLUDED.last_ws_error_at,
+            last_ws_error_code = EXCLUDED.last_ws_error_code,
+            last_ws_error_message = EXCLUDED.last_ws_error_message,
+            ws_reconnect_attempts = EXCLUDED.ws_reconnect_attempts,
             updated_at = EXCLUDED.updated_at
         """;
     jdbcTemplate.update(
@@ -82,6 +103,13 @@ public class JdbcConnectorHealthRepository implements ConnectorHealthRepository 
         state.lastErrorMessage(),
         state.openOrdersFetched(),
         state.recentTradesFetched(),
+        state.wsConnectionState().name(),
+        state.lastWsConnectedAt(),
+        state.lastWsDisconnectedAt(),
+        state.lastWsErrorAt(),
+        state.lastWsErrorCode(),
+        state.lastWsErrorMessage(),
+        state.wsReconnectAttempts(),
         state.updatedAt());
   }
 
@@ -97,6 +125,13 @@ public class JdbcConnectorHealthRepository implements ConnectorHealthRepository 
         rs.getString("last_error_message"),
         rs.getInt("open_orders_fetched"),
         rs.getInt("recent_trades_fetched"),
+        ConnectorWsConnectionState.valueOf(rs.getString("ws_connection_state")),
+        toInstant(rs, "last_ws_connected_at"),
+        toInstant(rs, "last_ws_disconnected_at"),
+        toInstant(rs, "last_ws_error_at"),
+        rs.getString("last_ws_error_code"),
+        rs.getString("last_ws_error_message"),
+        rs.getLong("ws_reconnect_attempts"),
         toInstant(rs, "updated_at"));
   }
 

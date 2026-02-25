@@ -70,10 +70,10 @@
 | Day | Dev A | Dev B | Dev C | Output |
 |---|---|---|---|---|
 | 21 | Finalize execution/event domain objects | Implement WS client + resilient reconnect loop | Add chaos tests: kill worker container + recover | WS connects and stays connected |
-| 22 | Implement execution ingestion pipeline interfaces | Parse `executionReport` → upsert executions + update order filled_qty/status | Add dedupe constraints for exchange_trade_id | Fills recorded exactly-once (within system) |
+| 22 | Implement execution ingestion pipeline interfaces | Parse `executionReport` → upsert executions + update order filled_qty/status | Add dedupe constraints for exchange_trade_id | Fills recorded exactly-once (within system) | ✅ Done |
 | 23 | Implement ledger posting for real fills (quote/base/fees) | On fill: ledger entries + release reservations + update balances/positions | Add integration test: simulated fill event → ledger invariant | Balances/positions correct after fills |
 | 24 | Add endpoints: trade history/executions query | Publish `orders.updated` + `balances.updated` on fill updates | Add dashboards basics (metrics names + docs) | Query executions works; events flow |
-| 25 | Add admin endpoint: replay/catch-up trigger | Implement reconnect catch-up: open orders + recent trades reconcile | Add alert thresholds (log-based rules) notes | Worker resilient + catch-up functional |
+| 25 | Add admin endpoint: replay/catch-up trigger | Implement reconnect catch-up: open orders + recent trades reconcile | Add alert thresholds (log-based rules) notes | Worker resilient + catch-up functional | ✅ Done |
 
 ---
 

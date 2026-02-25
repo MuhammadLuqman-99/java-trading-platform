@@ -20,6 +20,10 @@ import com.tradingplatform.tradingapi.config.RealmRoleGrantedAuthoritiesConverte
 import com.tradingplatform.tradingapi.connector.ConnectorHealthQueryService;
 import com.tradingplatform.tradingapi.connector.ConnectorHealthSnapshot;
 import com.tradingplatform.tradingapi.connector.ConnectorHealthStatus;
+import com.tradingplatform.tradingapi.connector.ConnectorReplayService;
+import com.tradingplatform.tradingapi.connector.ConnectorReplaySubmission;
+import com.tradingplatform.tradingapi.executions.ExecutionQueryService;
+import com.tradingplatform.tradingapi.executions.ExecutionView;
 import com.tradingplatform.tradingapi.instruments.InstrumentConfigService;
 import com.tradingplatform.tradingapi.instruments.InstrumentConfigView;
 import com.tradingplatform.tradingapi.ledger.AdminFundingService;
@@ -58,8 +62,10 @@ class TradingApiSecurityTest {
   @MockBean private TradingControlService tradingControlService;
   @MockBean private AdminFundingService adminFundingService;
   @MockBean private PortfolioQueryService portfolioQueryService;
+  @MockBean private ExecutionQueryService executionQueryService;
   @MockBean private InstrumentConfigService instrumentConfigService;
   @MockBean private ConnectorHealthQueryService connectorHealthQueryService;
+  @MockBean private ConnectorReplayService connectorReplayService;
 
   // ---- Admin endpoint tests ----
 
@@ -356,6 +362,56 @@ class TradingApiSecurityTest {
         .andExpect(jsonPath("$.recentTradesFetched").value(8));
   }
 
+  @Test
+  void adminConnectorReplayShouldReturnUnauthorizedWithoutToken() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/admin/connector/catch-up/replay")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"connector\":\"binance-spot\",\"reason\":\"manual_replay\"}"))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void adminConnectorReplayShouldReturnForbiddenForNonAdminRole() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/admin/connector/catch-up/replay")
+                .with(traderJwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"connector\":\"binance-spot\",\"reason\":\"manual_replay\"}"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void adminConnectorReplayShouldReturnAcceptedForAdminRole() throws Exception {
+    ConnectorReplaySubmission submission =
+        new ConnectorReplaySubmission(
+            UUID.fromString("44444444-4444-4444-4444-444444444444"),
+            "binance-spot",
+            "PENDING",
+            Instant.parse("2026-02-25T12:00:00Z"),
+            "admin-user");
+    when(
+            connectorReplayService.enqueueManualReplay(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+        .thenReturn(submission);
+
+    mockMvc
+        .perform(
+            post("/v1/admin/connector/catch-up/replay")
+                .with(adminJwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"connector\":\"binance-spot\",\"reason\":\"manual_replay\"}"))
+        .andExpect(status().isAccepted())
+        .andExpect(jsonPath("$.requestId").value("44444444-4444-4444-4444-444444444444"))
+        .andExpect(jsonPath("$.connector").value("binance-spot"))
+        .andExpect(jsonPath("$.status").value("PENDING"))
+        .andExpect(jsonPath("$.requestedBy").value("admin-user"));
+  }
+
   // ---- Public endpoint tests ----
 
   @Test
@@ -525,6 +581,58 @@ class TradingApiSecurityTest {
         .andExpect(jsonPath("$.orders").isArray())
         .andExpect(jsonPath("$.page").value(0))
         .andExpect(jsonPath("$.totalElements").value(0));
+  }
+
+  @Test
+  void executionsShouldReturnUnauthorizedWithoutToken() throws Exception {
+    mockMvc
+        .perform(get("/v1/executions").param("accountId", UUID.randomUUID().toString()))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void executionsShouldReturnOkForTraderRole() throws Exception {
+    UUID accountId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    UUID orderId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    when(
+            executionQueryService.listExecutions(
+                org.mockito.ArgumentMatchers.eq(accountId),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.eq(0),
+                org.mockito.ArgumentMatchers.eq(20)))
+        .thenReturn(
+            new ExecutionQueryService.ExecutionPage(
+                List.of(
+                    new ExecutionView(
+                        UUID.fromString("33333333-3333-3333-3333-333333333333"),
+                        orderId,
+                        accountId,
+                        "BTCUSDT",
+                        "BUY",
+                        "901",
+                        "BINANCE",
+                        "8001",
+                        new BigDecimal("0.10"),
+                        new BigDecimal("42500.00"),
+                        "USDT",
+                        new BigDecimal("2.00"),
+                        Instant.parse("2026-02-25T12:00:00Z"))),
+                0,
+                20,
+                1L,
+                1));
+
+    mockMvc
+        .perform(
+            get("/v1/executions").param("accountId", accountId.toString()).with(traderJwt()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.executions").isArray())
+        .andExpect(jsonPath("$.executions[0].orderId").value(orderId.toString()))
+        .andExpect(jsonPath("$.executions[0].symbol").value("BTCUSDT"))
+        .andExpect(jsonPath("$.totalElements").value(1));
   }
 
   // ---- Portfolio endpoint tests ----

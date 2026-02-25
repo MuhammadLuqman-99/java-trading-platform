@@ -13,8 +13,10 @@ import com.tradingplatform.infra.kafka.contract.EventEnvelope;
 import com.tradingplatform.infra.kafka.contract.EventTypes;
 import com.tradingplatform.infra.kafka.contract.payload.BalanceUpdatedV1;
 import com.tradingplatform.infra.kafka.contract.payload.ExecutionRecordedV1;
+import com.tradingplatform.infra.kafka.contract.payload.ExecutionRecordedV2;
 import com.tradingplatform.infra.kafka.contract.payload.OrderSubmittedV1;
 import com.tradingplatform.infra.kafka.contract.payload.OrderUpdatedV1;
+import com.tradingplatform.infra.kafka.contract.payload.OrderUpdatedV3;
 import com.tradingplatform.infra.kafka.topics.TopicNames;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -98,6 +100,23 @@ class TypedEventProducersTest {
             new BigDecimal("0.10"),
             Instant.parse("2026-02-24T12:02:00Z")));
     verify(eventPublisher).publish(eq(TopicNames.EXECUTIONS_RECORDED_V1), eq("ord-3"), any());
+    executionProducer.publishExecutionRecordedV2(
+        new ExecutionRecordedV2(
+            "exec-2",
+            "ord-3",
+            "acc-3",
+            "BINANCE",
+            "exchange-ord-3",
+            "client-ord-3",
+            "trade-2",
+            "TRADE",
+            "PARTIALLY_FILLED",
+            new BigDecimal("0.01"),
+            new BigDecimal("52000"),
+            "USDT",
+            new BigDecimal("0.10"),
+            Instant.parse("2026-02-24T12:02:30Z")));
+    verify(eventPublisher).publish(eq(TopicNames.EXECUTIONS_RECORDED_V2), eq("ord-3"), any());
 
     BalanceEventProducer balanceProducer = new BalanceEventProducer(eventPublisher, "worker-exec");
     balanceProducer.publishBalanceUpdated(
@@ -109,6 +128,30 @@ class TypedEventProducersTest {
             "ORDER_FILLED",
             Instant.parse("2026-02-24T12:03:00Z")));
     verify(eventPublisher).publish(eq(TopicNames.BALANCES_UPDATED_V1), eq("acc-4"), any());
+  }
+
+  @Test
+  void shouldPublishOrderUpdatedV3OnV3Topic() {
+    EventPublisher eventPublisher = mock(EventPublisher.class);
+    CompletableFuture<SendResult<String, String>> sendFuture = CompletableFuture.completedFuture(null);
+    when(eventPublisher.publish(anyString(), anyString(), any())).thenReturn(sendFuture);
+
+    OrderEventProducer producer = new OrderEventProducer(eventPublisher, "worker-exec");
+    producer.publishOrderUpdatedV3(
+        new OrderUpdatedV3(
+            "ord-5",
+            "acc-5",
+            "PARTIALLY_FILLED",
+            new BigDecimal("0.05"),
+            new BigDecimal("0.10"),
+            "BINANCE",
+            "exchange-ord-5",
+            "client-ord-5",
+            "TRADE",
+            "PARTIALLY_FILLED",
+            Instant.parse("2026-02-24T12:04:00Z")));
+
+    verify(eventPublisher).publish(eq(TopicNames.ORDERS_UPDATED_V3), eq("ord-5"), any());
   }
 
   @Test

@@ -84,6 +84,8 @@ connector:
     catchup:
       fixed-delay-ms: ${CONNECTOR_BINANCE_CATCHUP_FIXED_DELAY_MS:30000}
       recent-trades-lookback-minutes: ${CONNECTOR_BINANCE_CATCHUP_RECENT_TRADES_LOOKBACK_MINUTES:30}
+      replay-poll-delay-ms: ${CONNECTOR_BINANCE_CATCHUP_REPLAY_POLL_DELAY_MS:5000}
+      recovery-dedupe-window-ms: ${CONNECTOR_BINANCE_CATCHUP_RECOVERY_DEDUPE_WINDOW_MS:120000}
     health:
       down-threshold-minutes: ${CONNECTOR_BINANCE_HEALTH_DOWN_THRESHOLD_MINUTES:5}
     retry:
@@ -97,3 +99,10 @@ connector:
       venue: ${CONNECTOR_BINANCE_STATUS_MAPPING_VENUE:BINANCE_SPOT}
       refresh-enabled: ${CONNECTOR_BINANCE_STATUS_MAPPING_REFRESH_ENABLED:false}
       refresh-interval-ms: ${CONNECTOR_BINANCE_STATUS_MAPPING_REFRESH_INTERVAL_MS:300000}
+    ws:
+      enabled: ${CONNECTOR_BINANCE_WS_ENABLED:${BINANCE_WS_ENABLED:false}}
+      base-url: ${CONNECTOR_BINANCE_WS_BASE_URL:${BINANCE_WS_BASE_URL:wss://stream.binance.com:9443}}
+      reconnect-base-backoff-ms: ${CONNECTOR_BINANCE_WS_RECONNECT_BASE_BACKOFF_MS:250}
+      reconnect-max-backoff-ms: ${CONNECTOR_BINANCE_WS_RECONNECT_MAX_BACKOFF_MS:30000}
+      stable-reset-seconds: ${CONNECTOR_BINANCE_WS_STABLE_RESET_SECONDS:60}
+      keepalive-interval-seconds: ${CONNECTOR_BINANCE_WS_KEEPALIVE_INTERVAL_SECONDS:1500}
