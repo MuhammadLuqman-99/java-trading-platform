@@ -65,3 +65,35 @@ outbox:
     batch-size: ${OUTBOX_PUBLISHER_BATCH_SIZE:100}
     fixed-delay-ms: ${OUTBOX_PUBLISHER_FIXED_DELAY_MS:1000}
     producer-name: ${OUTBOX_PUBLISHER_PRODUCER_NAME:worker-exec-outbox-publisher}
+
+worker:
+  execution:
+    adapter: ${WORKER_EXECUTION_ADAPTER:logging}
+
+connector:
+  binance:
+    enabled: ${CONNECTOR_BINANCE_ENABLED:false}
+    base-url: ${CONNECTOR_BINANCE_BASE_URL:https://api.binance.com}
+    api-key: ${CONNECTOR_BINANCE_API_KEY:${BINANCE_API_KEY:}}
+    api-secret: ${CONNECTOR_BINANCE_API_SECRET:${BINANCE_API_SECRET:}}
+    api-key-file: ${CONNECTOR_BINANCE_API_KEY_FILE:${BINANCE_API_KEY_FILE:}}
+    api-secret-file: ${CONNECTOR_BINANCE_API_SECRET_FILE:${BINANCE_API_SECRET_FILE:}}
+    recv-window-ms: ${CONNECTOR_BINANCE_RECV_WINDOW_MS:5000}
+    timeout: ${CONNECTOR_BINANCE_TIMEOUT:5s}
+    timeout-ms: ${CONNECTOR_BINANCE_TIMEOUT_MS:3000}
+    catchup:
+      fixed-delay-ms: ${CONNECTOR_BINANCE_CATCHUP_FIXED_DELAY_MS:30000}
+      recent-trades-lookback-minutes: ${CONNECTOR_BINANCE_CATCHUP_RECENT_TRADES_LOOKBACK_MINUTES:30}
+    health:
+      down-threshold-minutes: ${CONNECTOR_BINANCE_HEALTH_DOWN_THRESHOLD_MINUTES:5}
+    retry:
+      max-attempts: ${CONNECTOR_BINANCE_RETRY_MAX_ATTEMPTS:5}
+      base-backoff: ${CONNECTOR_BINANCE_RETRY_BASE_BACKOFF:250ms}
+      max-backoff: ${CONNECTOR_BINANCE_RETRY_MAX_BACKOFF:3s}
+      base-backoff-ms: ${CONNECTOR_BINANCE_RETRY_BASE_BACKOFF_MS:200}
+      max-backoff-ms: ${CONNECTOR_BINANCE_RETRY_MAX_BACKOFF_MS:5000}
+      jitter-enabled: ${CONNECTOR_BINANCE_RETRY_JITTER_ENABLED:true}
+    status-mapping:
+      venue: ${CONNECTOR_BINANCE_STATUS_MAPPING_VENUE:BINANCE_SPOT}
+      refresh-enabled: ${CONNECTOR_BINANCE_STATUS_MAPPING_REFRESH_ENABLED:false}
+      refresh-interval-ms: ${CONNECTOR_BINANCE_STATUS_MAPPING_REFRESH_INTERVAL_MS:300000}

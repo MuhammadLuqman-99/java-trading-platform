@@ -9,7 +9,9 @@ public record TransitionOrderCommand(
     UUID orderId,
     OrderStatus toStatus,
     BigDecimal filledQty,
+    String exchangeName,
     String exchangeOrderId,
+    String exchangeClientOrderId,
     String reason,
     String correlationId,
     Instant occurredAt) {}

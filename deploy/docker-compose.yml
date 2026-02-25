@@ -99,6 +99,72 @@ services:
     networks:
       - trading_net
 
+  trading-api:
+    image: maven:3.9.9-eclipse-temurin-21
+    restart: unless-stopped
+    working_dir: /workspace
+    command: ["mvn", "-pl", "apps/trading-api", "spring-boot:run", "-DskipTests"]
+    environment:
+      SERVER_PORT: 8081
+      APP_ENVIRONMENT: local-compose
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-trading}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-trading}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-trading_pass}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      OAUTH2_JWK_SET_URI: http://keycloak:8080/realms/trading/protocol/openid-connect/certs
+      INFRA_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    ports:
+      - "${TRADING_API_PORT:-8081}:8081"
+    volumes:
+      - ..:/workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    networks:
+      - trading_net
+
+  worker-exec:
+    image: maven:3.9.9-eclipse-temurin-21
+    restart: unless-stopped
+    working_dir: /workspace
+    command: ["mvn", "-pl", "apps/worker-exec", "spring-boot:run", "-DskipTests"]
+    environment:
+      SERVER_PORT: 8082
+      APP_ENVIRONMENT: local-compose
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-trading}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-trading}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-trading_pass}
+      INFRA_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      WORKER_EXECUTION_ADAPTER: ${WORKER_EXECUTION_ADAPTER:-logging}
+      CONNECTOR_BINANCE_BASE_URL: ${CONNECTOR_BINANCE_BASE_URL:-https://api.binance.com}
+      CONNECTOR_BINANCE_API_KEY: ${CONNECTOR_BINANCE_API_KEY:-}
+      CONNECTOR_BINANCE_API_SECRET: ${CONNECTOR_BINANCE_API_SECRET:-}
+      CONNECTOR_BINANCE_API_KEY_FILE: ${CONNECTOR_BINANCE_API_KEY_FILE:-}
+      CONNECTOR_BINANCE_API_SECRET_FILE: ${CONNECTOR_BINANCE_API_SECRET_FILE:-}
+      BINANCE_API_KEY: ${BINANCE_API_KEY:-}
+      BINANCE_API_SECRET: ${BINANCE_API_SECRET:-}
+      BINANCE_API_KEY_FILE: ${BINANCE_API_KEY_FILE:-}
+      BINANCE_API_SECRET_FILE: ${BINANCE_API_SECRET_FILE:-}
+    ports:
+      - "${WORKER_EXEC_PORT:-8082}:8082"
+    volumes:
+      - ..:/workspace
+      - ./secrets:/run/secrets:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - trading_net
+
 volumes:
   postgres_data:
   redis_data:

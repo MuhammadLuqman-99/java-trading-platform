@@ -36,10 +36,12 @@ public class JdbcOrderRepository implements OrderRepository {
             status,
             filled_qty,
             client_order_id,
+            exchange_name,
             exchange_order_id,
+            exchange_client_order_id,
             created_at,
             updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """;
     jdbcTemplate.update(
         sql,
@@ -53,7 +55,9 @@ public class JdbcOrderRepository implements OrderRepository {
         order.status().name(),
         order.filledQty(),
         order.clientOrderId(),
+        order.exchangeName(),
         order.exchangeOrderId(),
+        order.exchangeClientOrderId(),
         order.createdAt(),
         order.updatedAt());
   }
@@ -72,7 +76,9 @@ public class JdbcOrderRepository implements OrderRepository {
                status,
                filled_qty,
                client_order_id,
+               exchange_name,
                exchange_order_id,
+               exchange_client_order_id,
                created_at,
                updated_at
         FROM orders
@@ -92,12 +98,21 @@ public class JdbcOrderRepository implements OrderRepository {
         UPDATE orders
         SET status = ?,
             filled_qty = ?,
+            exchange_name = ?,
             exchange_order_id = ?,
+            exchange_client_order_id = ?,
             updated_at = ?
         WHERE id = ?
         """;
     jdbcTemplate.update(
-        sql, order.status().name(), order.filledQty(), order.exchangeOrderId(), order.updatedAt(), order.id());
+        sql,
+        order.status().name(),
+        order.filledQty(),
+        order.exchangeName(),
+        order.exchangeOrderId(),
+        order.exchangeClientOrderId(),
+        order.updatedAt(),
+        order.id());
   }
 
   @Override
@@ -107,7 +122,8 @@ public class JdbcOrderRepository implements OrderRepository {
         new StringBuilder(
             """
             SELECT id, account_id, instrument, side, type, qty, price, status,
-                   filled_qty, client_order_id, exchange_order_id, created_at, updated_at
+                   filled_qty, client_order_id, exchange_name, exchange_order_id,
+                   exchange_client_order_id, created_at, updated_at
             FROM orders
             WHERE account_id = ?
             """);
@@ -156,7 +172,9 @@ public class JdbcOrderRepository implements OrderRepository {
         OrderStatus.valueOf(rs.getString("status")),
         rs.getBigDecimal("filled_qty"),
         rs.getString("client_order_id"),
+        rs.getString("exchange_name"),
         rs.getString("exchange_order_id"),
+        rs.getString("exchange_client_order_id"),
         rs.getTimestamp("created_at").toInstant(),
         rs.getTimestamp("updated_at").toInstant());
   }

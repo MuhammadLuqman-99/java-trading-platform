@@ -95,6 +95,13 @@ See `docs/security/jwt-config-notes.md` for full auth details.
 Security hardening checklist: `docs/security/security-checklist.md`.
 Stable API behavior notes: `docs/api/stable-api-behavior.md`.
 
+### Instruments Config Endpoints
+
+- Public list: `GET /v1/instruments`
+- Public by symbol: `GET /v1/instruments/{symbol}`
+- Admin upsert: `PUT /v1/admin/instruments/{symbol}`
+- Admin disable: `DELETE /v1/admin/instruments/{symbol}`
+
 ### Environment Variables
 
 All apps use `${VAR:default}` convention. See `deploy/.env.example` for infrastructure defaults.
@@ -106,6 +113,11 @@ All apps use `${VAR:default}` convention. See `deploy/.env.example` for infrastr
 | `SPRING_DATASOURCE_USERNAME` | `trading` | DB username |
 | `SPRING_DATASOURCE_PASSWORD` | `trading_pass` | DB password |
 | `OAUTH2_JWK_SET_URI` | `http://localhost:8080/realms/trading/...` | Keycloak JWKS endpoint |
+| `WORKER_EXECUTION_ADAPTER` | `logging` | Worker adapter mode (`logging` or `binance`) |
+| `CONNECTOR_BINANCE_API_KEY` | `` | Binance API key (env secret) |
+| `CONNECTOR_BINANCE_API_SECRET` | `` | Binance API secret (env secret) |
+| `CONNECTOR_BINANCE_API_KEY_FILE` | `` | File path for Binance API key (mounted secret) |
+| `CONNECTOR_BINANCE_API_SECRET_FILE` | `` | File path for Binance API secret (mounted secret) |
 | `TRACING_ENABLED` | `true` | Enable distributed tracing |
 | `TRACING_SAMPLING_PROBABILITY` | `1.0` | Trace sampling rate |
 

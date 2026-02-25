@@ -52,9 +52,11 @@ public class JdbcRiskCheckService implements RiskCheckService {
           "MAX_NOTIONAL_EXCEEDED",
           "Order notional "
               + orderNotional
-              + " exceeds max_order_notional "
-              + accountLimit.maxOrderNotional());
+                + " exceeds max_order_notional "
+                + accountLimit.maxOrderNotional());
     }
+
+    validateExchangeFilters(command, instrument, notionalPrice);
 
     if (command.type() == OrderType.LIMIT) {
       BigDecimal absoluteDiff = command.price().subtract(referencePrice).abs();
@@ -75,7 +77,7 @@ public class JdbcRiskCheckService implements RiskCheckService {
   private Optional<InstrumentRiskView> findInstrument(String symbol) {
     String sql =
         """
-        SELECT id, symbol, status, reference_price
+        SELECT id, symbol, status, reference_price, tick_size, step_size, min_qty, max_qty, min_notional
         FROM instruments
         WHERE symbol = ?
         """;
@@ -105,7 +107,12 @@ public class JdbcRiskCheckService implements RiskCheckService {
         rs.getObject("id", UUID.class),
         rs.getString("symbol"),
         rs.getString("status"),
-        rs.getBigDecimal("reference_price"));
+        rs.getBigDecimal("reference_price"),
+        rs.getBigDecimal("tick_size"),
+        rs.getBigDecimal("step_size"),
+        rs.getBigDecimal("min_qty"),
+        rs.getBigDecimal("max_qty"),
+        rs.getBigDecimal("min_notional"));
   }
 
   private AccountLimitView mapAccountLimit(ResultSet rs, int rowNum) throws SQLException {
@@ -113,5 +120,70 @@ public class JdbcRiskCheckService implements RiskCheckService {
         rs.getObject("account_id", UUID.class),
         rs.getBigDecimal("max_order_notional"),
         rs.getInt("price_band_bps"));
+  }
+
+  private void validateExchangeFilters(
+      CreateOrderCommand command, InstrumentRiskView instrument, BigDecimal notionalPrice) {
+    if (instrument.stepSize() != null && !isMultipleOf(command.qty(), instrument.stepSize())) {
+      throw new RiskViolationException(
+          "QTY_STEP_MISMATCH",
+          "Quantity "
+              + command.qty()
+              + " is not aligned to step_size "
+              + instrument.stepSize()
+              + " for instrument "
+              + instrument.symbol());
+    }
+
+    if (command.type() == OrderType.LIMIT
+        && instrument.tickSize() != null
+        && !isMultipleOf(command.price(), instrument.tickSize())) {
+      throw new RiskViolationException(
+          "PRICE_TICK_MISMATCH",
+          "Price "
+              + command.price()
+              + " is not aligned to tick_size "
+              + instrument.tickSize()
+              + " for instrument "
+              + instrument.symbol());
+    }
+
+    if (instrument.minQty() != null && command.qty().compareTo(instrument.minQty()) < 0) {
+      throw new RiskViolationException(
+          "QTY_OUT_OF_RANGE",
+          "Quantity "
+              + command.qty()
+              + " is below min_qty "
+              + instrument.minQty()
+              + " for instrument "
+              + instrument.symbol());
+    }
+
+    if (instrument.maxQty() != null && command.qty().compareTo(instrument.maxQty()) > 0) {
+      throw new RiskViolationException(
+          "QTY_OUT_OF_RANGE",
+          "Quantity "
+              + command.qty()
+              + " exceeds max_qty "
+              + instrument.maxQty()
+              + " for instrument "
+              + instrument.symbol());
+    }
+
+    if (instrument.minNotional() != null
+        && command.qty().multiply(notionalPrice).compareTo(instrument.minNotional()) < 0) {
+      throw new RiskViolationException(
+          "MIN_NOTIONAL_NOT_MET",
+          "Order notional "
+              + command.qty().multiply(notionalPrice)
+              + " is below min_notional "
+              + instrument.minNotional()
+              + " for instrument "
+              + instrument.symbol());
+    }
+  }
+
+  private static boolean isMultipleOf(BigDecimal value, BigDecimal increment) {
+    return value.remainder(increment).compareTo(BigDecimal.ZERO) == 0;
   }
 }

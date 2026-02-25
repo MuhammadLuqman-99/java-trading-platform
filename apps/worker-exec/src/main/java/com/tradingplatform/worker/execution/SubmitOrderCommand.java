@@ -12,6 +12,7 @@ public record SubmitOrderCommand(
     String type,
     BigDecimal qty,
     BigDecimal price,
+    String clientOrderId,
     Instant submittedAt,
     String correlationId,
     UUID eventId) {}

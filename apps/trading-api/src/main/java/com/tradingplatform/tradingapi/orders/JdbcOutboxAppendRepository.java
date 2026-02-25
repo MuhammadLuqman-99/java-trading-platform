@@ -7,7 +7,9 @@ import com.tradingplatform.domain.orders.OrderStatus;
 import com.tradingplatform.infra.kafka.contract.EventTypes;
 import com.tradingplatform.infra.kafka.contract.payload.BalanceUpdatedV1;
 import com.tradingplatform.infra.kafka.contract.payload.OrderSubmittedV1;
+import com.tradingplatform.infra.kafka.contract.payload.OrderSubmittedV2;
 import com.tradingplatform.infra.kafka.contract.payload.OrderUpdatedV1;
+import com.tradingplatform.infra.kafka.contract.payload.OrderUpdatedV2;
 import com.tradingplatform.infra.kafka.topics.TopicNames;
 import java.time.Instant;
 import java.util.UUID;
@@ -28,7 +30,7 @@ public class JdbcOutboxAppendRepository implements OutboxAppendRepository {
 
   @Override
   public void appendOrderSubmitted(Order order, String correlationId, Instant occurredAt) {
-    OrderSubmittedV1 payload =
+    OrderSubmittedV1 payloadV1 =
         new OrderSubmittedV1(
             order.id().toString(),
             order.accountId().toString(),
@@ -42,14 +44,32 @@ public class JdbcOutboxAppendRepository implements OutboxAppendRepository {
         ORDER_AGGREGATE_TYPE,
         order.id(),
         EventTypes.ORDER_SUBMITTED,
-        payload,
+        payloadV1,
         TopicNames.ORDERS_SUBMITTED_V1);
+
+    OrderSubmittedV2 payloadV2 =
+        new OrderSubmittedV2(
+            order.id().toString(),
+            order.accountId().toString(),
+            order.instrument(),
+            order.side().name(),
+            order.type().name(),
+            order.qty(),
+            order.price(),
+            order.clientOrderId(),
+            occurredAt);
+    append(
+        ORDER_AGGREGATE_TYPE,
+        order.id(),
+        EventTypes.ORDER_SUBMITTED,
+        payloadV2,
+        TopicNames.ORDERS_SUBMITTED_V2);
   }
 
   @Override
   public void appendOrderUpdated(
       Order order, OrderStatus fromStatus, String correlationId, Instant occurredAt) {
-    OrderUpdatedV1 payload =
+    OrderUpdatedV1 payloadV1 =
         new OrderUpdatedV1(
             order.id().toString(),
             order.accountId().toString(),
@@ -62,8 +82,26 @@ public class JdbcOutboxAppendRepository implements OutboxAppendRepository {
         ORDER_AGGREGATE_TYPE,
         order.id(),
         EventTypes.ORDER_UPDATED,
-        payload,
+        payloadV1,
         TopicNames.ORDERS_UPDATED_V1);
+
+    OrderUpdatedV2 payloadV2 =
+        new OrderUpdatedV2(
+            order.id().toString(),
+            order.accountId().toString(),
+            order.status().name(),
+            order.filledQty(),
+            order.qty().subtract(order.filledQty()),
+            order.exchangeName(),
+            order.exchangeOrderId(),
+            order.exchangeClientOrderId(),
+            occurredAt);
+    append(
+        ORDER_AGGREGATE_TYPE,
+        order.id(),
+        EventTypes.ORDER_UPDATED,
+        payloadV2,
+        TopicNames.ORDERS_UPDATED_V2);
   }
 
   @Override

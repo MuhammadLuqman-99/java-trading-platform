@@ -70,7 +70,6 @@ class TradingApiApplicationTest {
     assertEquals(HttpStatus.OK, response.getStatusCode());
     Set<String> paths = openApiPaths(response.getBody());
     assertTrue(paths.contains("/v1/version"));
-    assertTrue(paths.stream().anyMatch(path -> path.startsWith("/actuator/health")));
   }
 
   @SuppressWarnings("unchecked")

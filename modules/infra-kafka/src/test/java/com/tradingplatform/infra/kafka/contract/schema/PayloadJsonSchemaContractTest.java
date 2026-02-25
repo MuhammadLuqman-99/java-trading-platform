@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import com.tradingplatform.infra.kafka.contract.payload.BalanceUpdatedV1;
 import com.tradingplatform.infra.kafka.contract.payload.ExecutionRecordedV1;
 import com.tradingplatform.infra.kafka.contract.payload.OrderSubmittedV1;
+import com.tradingplatform.infra.kafka.contract.payload.OrderSubmittedV2;
 import com.tradingplatform.infra.kafka.contract.payload.OrderUpdatedV1;
+import com.tradingplatform.infra.kafka.contract.payload.OrderUpdatedV2;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -13,7 +15,9 @@ import org.junit.jupiter.api.Test;
 class PayloadJsonSchemaContractTest {
   private static final String BASE_PATH = "contracts/payload-schemas/";
   private static final String ORDER_SUBMITTED_SCHEMA = BASE_PATH + "order-submitted-v1.schema.json";
+  private static final String ORDER_SUBMITTED_V2_SCHEMA = BASE_PATH + "order-submitted-v2.schema.json";
   private static final String ORDER_UPDATED_SCHEMA = BASE_PATH + "order-updated-v1.schema.json";
+  private static final String ORDER_UPDATED_V2_SCHEMA = BASE_PATH + "order-updated-v2.schema.json";
   private static final String EXECUTION_RECORDED_SCHEMA =
       BASE_PATH + "execution-recorded-v1.schema.json";
   private static final String BALANCE_UPDATED_SCHEMA = BASE_PATH + "balance-updated-v1.schema.json";
@@ -21,7 +25,9 @@ class PayloadJsonSchemaContractTest {
   private static final Map<String, String> PAYLOAD_SCHEMAS =
       Map.of(
           OrderSubmittedV1.class.getSimpleName(), ORDER_SUBMITTED_SCHEMA,
+          OrderSubmittedV2.class.getSimpleName(), ORDER_SUBMITTED_V2_SCHEMA,
           OrderUpdatedV1.class.getSimpleName(), ORDER_UPDATED_SCHEMA,
+          OrderUpdatedV2.class.getSimpleName(), ORDER_UPDATED_V2_SCHEMA,
           ExecutionRecordedV1.class.getSimpleName(), EXECUTION_RECORDED_SCHEMA,
           BalanceUpdatedV1.class.getSimpleName(), BALANCE_UPDATED_SCHEMA);
 
@@ -61,6 +67,25 @@ class PayloadJsonSchemaContractTest {
   }
 
   @Test
+  void orderSubmittedV2Schema_shouldAcceptValidPayload() {
+    String payload =
+        """
+        {
+          "orderId": "ord-1001",
+          "accountId": "acc-2001",
+          "instrument": "BTCUSDT",
+          "side": "BUY",
+          "type": "MARKET",
+          "qty": 0.015,
+          "price": null,
+          "clientOrderId": "client-1001",
+          "submittedAt": "2026-02-24T12:00:00Z"
+        }
+        """;
+    JsonSchemaValidatorSupport.assertValid(ORDER_SUBMITTED_V2_SCHEMA, payload);
+  }
+
+  @Test
   void orderUpdatedV1Schema_shouldAcceptValidPayload() {
     String payload =
         """
@@ -92,6 +117,44 @@ class PayloadJsonSchemaContractTest {
         }
         """;
     JsonSchemaValidatorSupport.assertInvalid(ORDER_UPDATED_SCHEMA, payload, "number");
+  }
+
+  @Test
+  void orderUpdatedV2Schema_shouldAcceptValidPayload() {
+    String payload =
+        """
+        {
+          "orderId": "ord-1001",
+          "accountId": "acc-2001",
+          "status": "ACK",
+          "filledQty": 0,
+          "remainingQty": 0.010,
+          "exchangeName": "BINANCE",
+          "exchangeOrderId": "binance-123",
+          "exchangeClientOrderId": "client-1001",
+          "updatedAt": "2026-02-24T12:30:00Z"
+        }
+        """;
+    JsonSchemaValidatorSupport.assertValid(ORDER_UPDATED_V2_SCHEMA, payload);
+  }
+
+  @Test
+  void orderUpdatedV2Schema_shouldAcceptNullExchangeIdentifiers() {
+    String payload =
+        """
+        {
+          "orderId": "ord-1001",
+          "accountId": "acc-2001",
+          "status": "CANCELED",
+          "filledQty": 0,
+          "remainingQty": 0.010,
+          "exchangeName": null,
+          "exchangeOrderId": null,
+          "exchangeClientOrderId": null,
+          "updatedAt": "2026-02-24T12:30:00Z"
+        }
+        """;
+    JsonSchemaValidatorSupport.assertValid(ORDER_UPDATED_V2_SCHEMA, payload);
   }
 
   @Test
@@ -168,7 +231,9 @@ class PayloadJsonSchemaContractTest {
     Set<String> expectedPayloadTypes =
         Set.of(
             OrderSubmittedV1.class.getSimpleName(),
+            OrderSubmittedV2.class.getSimpleName(),
             OrderUpdatedV1.class.getSimpleName(),
+            OrderUpdatedV2.class.getSimpleName(),
             ExecutionRecordedV1.class.getSimpleName(),
             BalanceUpdatedV1.class.getSimpleName());
 

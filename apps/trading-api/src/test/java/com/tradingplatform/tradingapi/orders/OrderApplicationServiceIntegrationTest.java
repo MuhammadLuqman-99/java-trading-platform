@@ -15,7 +15,6 @@ import com.tradingplatform.tradingapi.risk.TradingControlService;
 import com.tradingplatform.tradingapi.wallet.JdbcWalletRepository;
 import com.tradingplatform.tradingapi.wallet.WalletReservationService;
 import java.math.BigDecimal;
-import java.util.Map;
 import java.util.UUID;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
@@ -93,12 +92,20 @@ class OrderApplicationServiceIntegrationTest {
     assertEquals(OrderStatus.NEW, order.status());
     assertEquals(1, queryCount("SELECT COUNT(*) FROM orders"));
     assertEquals(1, queryCount("SELECT COUNT(*) FROM order_events"));
-    assertEquals(1, queryCount("SELECT COUNT(*) FROM outbox_events"));
+    assertEquals(2, queryCount("SELECT COUNT(*) FROM outbox_events"));
 
-    Map<String, Object> outboxRow =
-        jdbcTemplate.queryForMap("SELECT event_type, topic FROM outbox_events WHERE event_key = ?", orderId.toString());
-    assertEquals("OrderSubmitted", outboxRow.get("event_type"));
-    assertEquals("orders.submitted.v1", outboxRow.get("topic"));
+    assertEquals(
+        1,
+        queryCount(
+            "SELECT COUNT(*) FROM outbox_events WHERE event_key = '"
+                + orderId
+                + "' AND event_type = 'OrderSubmitted' AND topic = 'orders.submitted.v1'"));
+    assertEquals(
+        1,
+        queryCount(
+            "SELECT COUNT(*) FROM outbox_events WHERE event_key = '"
+                + orderId
+                + "' AND event_type = 'OrderSubmitted' AND topic = 'orders.submitted.v2'"));
   }
 
   @Test
@@ -123,16 +130,22 @@ class OrderApplicationServiceIntegrationTest {
                 orderId,
                 OrderStatus.ACK,
                 BigDecimal.ZERO,
+                "BINANCE",
                 "exch-1",
+                "exch-client-1",
                 "exchange_ack",
                 "corr-3",
                 null));
 
     assertEquals(OrderStatus.ACK, updated.status());
     assertEquals(2, queryCount("SELECT COUNT(*) FROM order_events"));
-    assertEquals(2, queryCount("SELECT COUNT(*) FROM outbox_events"));
+    assertEquals(4, queryCount("SELECT COUNT(*) FROM outbox_events"));
     assertEquals(
         "ACK", jdbcTemplate.queryForObject("SELECT status FROM orders WHERE id = ?", String.class, orderId));
+    assertEquals(
+        "BINANCE",
+        jdbcTemplate.queryForObject(
+            "SELECT exchange_name FROM orders WHERE id = ?", String.class, orderId));
   }
 
   @Test
@@ -159,13 +172,15 @@ class OrderApplicationServiceIntegrationTest {
                     orderId,
                     OrderStatus.FILLED,
                     new BigDecimal("10"),
+                    "BINANCE",
                     "exch-2",
+                    "exch-client-2",
                     "invalid_direct_fill",
                     "corr-5",
                     null)));
 
     assertEquals(1, queryCount("SELECT COUNT(*) FROM order_events"));
-    assertEquals(1, queryCount("SELECT COUNT(*) FROM outbox_events"));
+    assertEquals(2, queryCount("SELECT COUNT(*) FROM outbox_events"));
     assertEquals(
         "NEW", jdbcTemplate.queryForObject("SELECT status FROM orders WHERE id = ?", String.class, orderId));
   }

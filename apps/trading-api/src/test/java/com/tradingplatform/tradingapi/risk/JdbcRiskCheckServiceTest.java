@@ -31,7 +31,7 @@ class JdbcRiskCheckServiceTest {
 
   @Test
   void shouldAcceptLimitOrderWithinConstraints() {
-    stubInstrument(new InstrumentRiskView(UUID.randomUUID(), "BTCUSDT", "ACTIVE", new BigDecimal("50000")));
+    stubInstrument(activeInstrument());
     stubLimits(new AccountLimitView(UUID.randomUUID(), new BigDecimal("100000"), 500));
 
     assertDoesNotThrow(
@@ -42,7 +42,17 @@ class JdbcRiskCheckServiceTest {
 
   @Test
   void shouldRejectInactiveInstrument() {
-    stubInstrument(new InstrumentRiskView(UUID.randomUUID(), "BTCUSDT", "HALTED", new BigDecimal("50000")));
+    stubInstrument(
+        new InstrumentRiskView(
+            UUID.randomUUID(),
+            "BTCUSDT",
+            "HALTED",
+            new BigDecimal("50000"),
+            new BigDecimal("0.10"),
+            new BigDecimal("0.01"),
+            new BigDecimal("0.01"),
+            new BigDecimal("100"),
+            new BigDecimal("10")));
     stubLimits(new AccountLimitView(UUID.randomUUID(), new BigDecimal("100000"), 500));
 
     RiskViolationException ex =
@@ -54,7 +64,7 @@ class JdbcRiskCheckServiceTest {
 
   @Test
   void shouldRejectMaxNotionalExceeded() {
-    stubInstrument(new InstrumentRiskView(UUID.randomUUID(), "BTCUSDT", "ACTIVE", new BigDecimal("50000")));
+    stubInstrument(activeInstrument());
     stubLimits(new AccountLimitView(UUID.randomUUID(), new BigDecimal("10000"), 500));
 
     RiskViolationException ex =
@@ -68,7 +78,7 @@ class JdbcRiskCheckServiceTest {
 
   @Test
   void shouldRejectPriceBandExceededForLimit() {
-    stubInstrument(new InstrumentRiskView(UUID.randomUUID(), "BTCUSDT", "ACTIVE", new BigDecimal("50000")));
+    stubInstrument(activeInstrument());
     stubLimits(new AccountLimitView(UUID.randomUUID(), new BigDecimal("1000000"), 100));
 
     RiskViolationException ex =
@@ -78,6 +88,48 @@ class JdbcRiskCheckServiceTest {
                 service.validateOrder(
                     command(OrderType.LIMIT, new BigDecimal("1"), new BigDecimal("56000"))));
     assertEquals("PRICE_BAND_EXCEEDED", ex.code());
+  }
+
+  @Test
+  void shouldRejectQtyStepMismatch() {
+    stubInstrument(activeInstrument());
+    stubLimits(new AccountLimitView(UUID.randomUUID(), new BigDecimal("1000000"), 1000));
+
+    RiskViolationException ex =
+        assertThrows(
+            RiskViolationException.class,
+            () ->
+                service.validateOrder(
+                    command(OrderType.LIMIT, new BigDecimal("1.005"), new BigDecimal("50000.10"))));
+    assertEquals("QTY_STEP_MISMATCH", ex.code());
+  }
+
+  @Test
+  void shouldRejectPriceTickMismatch() {
+    stubInstrument(activeInstrument());
+    stubLimits(new AccountLimitView(UUID.randomUUID(), new BigDecimal("1000000"), 1000));
+
+    RiskViolationException ex =
+        assertThrows(
+            RiskViolationException.class,
+            () ->
+                service.validateOrder(
+                    command(OrderType.LIMIT, new BigDecimal("1"), new BigDecimal("50000.05"))));
+    assertEquals("PRICE_TICK_MISMATCH", ex.code());
+  }
+
+  @Test
+  void shouldRejectMinNotionalNotMet() {
+    stubInstrument(activeInstrument());
+    stubLimits(new AccountLimitView(UUID.randomUUID(), new BigDecimal("1000000"), 1000));
+
+    RiskViolationException ex =
+        assertThrows(
+            RiskViolationException.class,
+            () ->
+                service.validateOrder(
+                    command(OrderType.LIMIT, new BigDecimal("0.01"), new BigDecimal("500.00"))));
+    assertEquals("MIN_NOTIONAL_NOT_MET", ex.code());
   }
 
   private void stubInstrument(InstrumentRiskView instrument) {
@@ -110,5 +162,18 @@ class JdbcRiskCheckServiceTest {
         "client-1",
         "corr-1",
         Instant.now());
+  }
+
+  private static InstrumentRiskView activeInstrument() {
+    return new InstrumentRiskView(
+        UUID.randomUUID(),
+        "BTCUSDT",
+        "ACTIVE",
+        new BigDecimal("50000"),
+        new BigDecimal("0.10"),
+        new BigDecimal("0.01"),
+        new BigDecimal("0.01"),
+        new BigDecimal("100"),
+        new BigDecimal("10"));
   }
 }

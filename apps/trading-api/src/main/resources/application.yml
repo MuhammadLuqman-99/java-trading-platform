@@ -69,3 +69,7 @@ reconciliation:
   balance:
     enabled: ${RECONCILIATION_BALANCE_ENABLED:false}
     fixed-delay-ms: ${RECONCILIATION_BALANCE_FIXED_DELAY_MS:300000}
+
+connector:
+  health:
+    stale-threshold-minutes: ${CONNECTOR_HEALTH_STALE_THRESHOLD_MINUTES:5}

@@ -28,4 +28,9 @@ Response header `X-Idempotency-Status` is set to:
 ## Risk and Domain Errors
 
 - Risk violations return `409` with `type=/problems/risk-violation` and `code`.
+- Exchange filter validation may return:
+  - `QTY_STEP_MISMATCH`
+  - `PRICE_TICK_MISMATCH`
+  - `QTY_OUT_OF_RANGE`
+  - `MIN_NOTIONAL_NOT_MET`
 - Wallet/order validation errors return stable problem types in `GlobalExceptionHandler`.

@@ -45,7 +45,7 @@ public class OpenApiConfig {
   public GroupedOpenApi opsApiGroup() {
     return GroupedOpenApi.builder()
         .group("ops")
-        .pathsToMatch("/v1/version", "/actuator/health", "/actuator/health/**")
+        .pathsToMatch("/v1/version", "/actuator/**")
         .build();
   }
 }

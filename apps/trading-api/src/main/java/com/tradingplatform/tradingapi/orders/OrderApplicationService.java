@@ -84,7 +84,9 @@ public class OrderApplicationService {
         current.transitionTo(
             command.toStatus(),
             command.filledQty(),
-            command.exchangeOrderId() == null ? current.exchangeOrderId() : command.exchangeOrderId(),
+            command.exchangeName(),
+            command.exchangeOrderId(),
+            command.exchangeClientOrderId(),
             occurredAt);
     orderRepository.update(next);
     orderEventRepository.append(
@@ -178,7 +180,9 @@ public class OrderApplicationService {
     payload.put("reason", command.reason());
     payload.put("filledQty", next.filledQty());
     payload.put("remainingQty", next.qty().subtract(next.filledQty()));
+    payload.put("exchangeName", next.exchangeName());
     payload.put("exchangeOrderId", next.exchangeOrderId());
+    payload.put("exchangeClientOrderId", next.exchangeClientOrderId());
     payload.put("occurredAt", occurredAt);
     return payload;
   }

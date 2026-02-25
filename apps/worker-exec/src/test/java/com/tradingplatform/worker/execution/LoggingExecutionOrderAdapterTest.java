@@ -1,6 +1,7 @@
 package com.tradingplatform.worker.execution;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -13,17 +14,20 @@ class LoggingExecutionOrderAdapterTest {
     LoggingExecutionOrderAdapter adapter = new LoggingExecutionOrderAdapter();
     SubmitOrderCommand command =
         new SubmitOrderCommand(
-            "ord-1",
-            "acc-1",
+            "6b8b4567-1234-4bba-a57c-f945f2999d01",
+            "6b8b4567-1234-4bba-a57c-f945f2999d02",
             "BTCUSDT",
             "BUY",
             "LIMIT",
             new BigDecimal("0.01"),
             new BigDecimal("40000.00"),
+            "client-1001",
             Instant.parse("2026-02-24T12:00:00Z"),
-            "ord-1",
+            "corr-1001",
             UUID.randomUUID());
 
-    assertDoesNotThrow(() -> adapter.submitOrder(command));
+    ExecutionAckResult result = assertDoesNotThrow(() -> adapter.placeOrder(command));
+    assertEquals("BINANCE", result.exchangeName());
+    assertEquals("6b8b4567-1234-4bba-a57c-f945f2999d01", result.exchangeClientOrderId());
   }
 }

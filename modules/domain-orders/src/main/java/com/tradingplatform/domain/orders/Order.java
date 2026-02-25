@@ -16,7 +16,9 @@ public record Order(
     OrderStatus status,
     BigDecimal filledQty,
     String clientOrderId,
+    String exchangeName,
     String exchangeOrderId,
+    String exchangeClientOrderId,
     Instant createdAt,
     Instant updatedAt) {
   public Order {
@@ -33,6 +35,9 @@ public record Order(
       throw new OrderDomainException("filledQty must be between 0 and qty");
     }
     requireNonBlank(clientOrderId, "clientOrderId");
+    requireOptionalNonBlank(exchangeName, "exchangeName");
+    requireOptionalNonBlank(exchangeOrderId, "exchangeOrderId");
+    requireOptionalNonBlank(exchangeClientOrderId, "exchangeClientOrderId");
     Objects.requireNonNull(createdAt, "createdAt must not be null");
     Objects.requireNonNull(updatedAt, "updatedAt must not be null");
   }
@@ -60,12 +65,24 @@ public record Order(
         BigDecimal.ZERO,
         clientOrderId,
         null,
+        null,
+        null,
         now,
         now);
   }
 
   public Order transitionTo(
       OrderStatus toStatus, BigDecimal nextFilledQty, String nextExchangeOrderId, Instant now) {
+    return transitionTo(toStatus, nextFilledQty, null, nextExchangeOrderId, null, now);
+  }
+
+  public Order transitionTo(
+      OrderStatus toStatus,
+      BigDecimal nextFilledQty,
+      String nextExchangeName,
+      String nextExchangeOrderId,
+      String nextExchangeClientOrderId,
+      Instant now) {
     Objects.requireNonNull(now, "now must not be null");
     OrderStateMachine.validateTransition(status, toStatus);
     BigDecimal safeFilledQty = nextFilledQty == null ? filledQty : nextFilledQty;
@@ -83,7 +100,9 @@ public record Order(
         toStatus,
         safeFilledQty,
         clientOrderId,
-        nextExchangeOrderId,
+        nextExchangeName == null ? exchangeName : nextExchangeName,
+        nextExchangeOrderId == null ? exchangeOrderId : nextExchangeOrderId,
+        nextExchangeClientOrderId == null ? exchangeClientOrderId : nextExchangeClientOrderId,
         createdAt,
         now);
   }
@@ -107,6 +126,12 @@ public record Order(
   private static void requireNonBlank(String value, String fieldName) {
     if (value == null || value.isBlank()) {
       throw new OrderDomainException(fieldName + " must not be blank");
+    }
+  }
+
+  private static void requireOptionalNonBlank(String value, String fieldName) {
+    if (value != null && value.isBlank()) {
+      throw new OrderDomainException(fieldName + " must not be blank when provided");
     }
   }
 }

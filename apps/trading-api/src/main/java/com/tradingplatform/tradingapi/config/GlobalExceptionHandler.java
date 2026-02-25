@@ -4,6 +4,7 @@ import java.net.URI;
 import com.tradingplatform.domain.orders.OrderDomainException;
 import com.tradingplatform.domain.wallet.InsufficientBalanceException;
 import com.tradingplatform.domain.wallet.WalletDomainException;
+import com.tradingplatform.tradingapi.instruments.InstrumentNotFoundException;
 import com.tradingplatform.tradingapi.risk.RiskViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -141,6 +142,14 @@ public class GlobalExceptionHandler {
     problem.setType(URI.create(TYPE_PREFIX + "risk-violation"));
     problem.setTitle("Risk Violation");
     problem.setProperty("code", ex.code());
+    return problem;
+  }
+
+  @ExceptionHandler(InstrumentNotFoundException.class)
+  public ProblemDetail handleInstrumentNotFound(InstrumentNotFoundException ex) {
+    ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    problem.setType(URI.create(TYPE_PREFIX + "instrument-not-found"));
+    problem.setTitle("Instrument Not Found");
     return problem;
   }
 

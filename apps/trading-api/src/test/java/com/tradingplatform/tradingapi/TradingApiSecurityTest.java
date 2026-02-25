@@ -2,6 +2,7 @@ package com.tradingplatform.tradingapi;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -16,6 +17,11 @@ import com.tradingplatform.tradingapi.admin.funding.FundingAdjustmentResult;
 import com.tradingplatform.tradingapi.admin.funding.FundingAdjustmentService;
 import com.tradingplatform.tradingapi.admin.funding.FundingDirection;
 import com.tradingplatform.tradingapi.config.RealmRoleGrantedAuthoritiesConverter;
+import com.tradingplatform.tradingapi.connector.ConnectorHealthQueryService;
+import com.tradingplatform.tradingapi.connector.ConnectorHealthSnapshot;
+import com.tradingplatform.tradingapi.connector.ConnectorHealthStatus;
+import com.tradingplatform.tradingapi.instruments.InstrumentConfigService;
+import com.tradingplatform.tradingapi.instruments.InstrumentConfigView;
 import com.tradingplatform.tradingapi.ledger.AdminFundingService;
 import com.tradingplatform.tradingapi.orders.OrderApplicationService;
 import com.tradingplatform.tradingapi.orders.OrderCreateUseCase;
@@ -30,6 +36,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +58,8 @@ class TradingApiSecurityTest {
   @MockBean private TradingControlService tradingControlService;
   @MockBean private AdminFundingService adminFundingService;
   @MockBean private PortfolioQueryService portfolioQueryService;
+  @MockBean private InstrumentConfigService instrumentConfigService;
+  @MockBean private ConnectorHealthQueryService connectorHealthQueryService;
 
   // ---- Admin endpoint tests ----
 
@@ -253,6 +262,100 @@ class TradingApiSecurityTest {
         .andExpect(jsonPath("$.reserved").value(0));
   }
 
+  @Test
+  void adminUpsertInstrumentShouldReturnUnauthorizedWithoutToken() throws Exception {
+    mockMvc
+        .perform(
+            put("/v1/admin/instruments/BTCUSDT")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validUpsertInstrumentRequestJson()))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void adminUpsertInstrumentShouldReturnForbiddenForNonAdminRole() throws Exception {
+    mockMvc
+        .perform(
+            put("/v1/admin/instruments/BTCUSDT")
+                .with(traderJwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validUpsertInstrumentRequestJson()))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void adminUpsertInstrumentShouldReturnOkForAdminRole() throws Exception {
+    InstrumentConfigView instrument =
+        new InstrumentConfigView(
+            UUID.fromString("33333333-3333-3333-3333-333333333333"),
+            "BTCUSDT",
+            "ACTIVE",
+            new BigDecimal("50000"),
+            Instant.parse("2026-02-25T12:00:00Z"),
+            Instant.parse("2026-02-25T12:00:00Z"));
+    when(
+            instrumentConfigService.upsert(
+                org.mockito.ArgumentMatchers.eq("BTCUSDT"),
+                org.mockito.ArgumentMatchers.eq("ACTIVE"),
+                org.mockito.ArgumentMatchers.eq(new BigDecimal("50000"))))
+        .thenReturn(instrument);
+
+    mockMvc
+        .perform(
+            put("/v1/admin/instruments/BTCUSDT")
+                .with(adminJwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validUpsertInstrumentRequestJson()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.symbol").value("BTCUSDT"))
+        .andExpect(jsonPath("$.status").value("ACTIVE"))
+        .andExpect(jsonPath("$.referencePrice").value(50000));
+  }
+
+  @Test
+  void adminDisableInstrumentShouldReturnForbiddenForNonAdminRole() throws Exception {
+    mockMvc
+        .perform(delete("/v1/admin/instruments/BTCUSDT").with(traderJwt()))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void adminConnectorHealthShouldReturnUnauthorizedWithoutToken() throws Exception {
+    mockMvc.perform(get("/v1/admin/connector/health")).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void adminConnectorHealthShouldReturnForbiddenForNonAdminRole() throws Exception {
+    mockMvc.perform(get("/v1/admin/connector/health").with(traderJwt())).andExpect(status().isForbidden());
+  }
+
+  @Test
+  void adminConnectorHealthShouldReturnOkForAdminRole() throws Exception {
+    when(connectorHealthQueryService.findByConnectorName("binance-spot"))
+        .thenReturn(
+            Optional.of(
+                new ConnectorHealthSnapshot(
+                    "binance-spot",
+                    ConnectorHealthStatus.UP,
+                    Instant.parse("2026-02-25T11:59:00Z"),
+                    Instant.parse("2026-02-25T11:58:50Z"),
+                    Instant.parse("2026-02-25T11:59:00Z"),
+                    null,
+                    null,
+                    null,
+                    12,
+                    8,
+                    Instant.parse("2026-02-25T11:59:00Z"))));
+
+    mockMvc
+        .perform(get("/v1/admin/connector/health").with(adminJwt()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.connector").value("binance-spot"))
+        .andExpect(jsonPath("$.status").value("UP"))
+        .andExpect(jsonPath("$.openOrdersFetched").value(12))
+        .andExpect(jsonPath("$.recentTradesFetched").value(8));
+  }
+
   // ---- Public endpoint tests ----
 
   @Test
@@ -263,6 +366,26 @@ class TradingApiSecurityTest {
     mockMvc.perform(get("/v3/api-docs/public")).andExpect(status().isOk());
     mockMvc.perform(get("/v3/api-docs/ops")).andExpect(status().isOk());
     mockMvc.perform(get("/swagger-ui.html")).andExpect(status().is3xxRedirection());
+  }
+
+  @Test
+  void instrumentsShouldReturnOkWithoutToken() throws Exception {
+    when(instrumentConfigService.list(null))
+        .thenReturn(
+            List.of(
+                new InstrumentConfigView(
+                    UUID.fromString("33333333-3333-3333-3333-333333333333"),
+                    "BTCUSDT",
+                    "ACTIVE",
+                    new BigDecimal("50000"),
+                    Instant.parse("2026-02-25T12:00:00Z"),
+                    Instant.parse("2026-02-25T12:00:00Z"))));
+
+    mockMvc
+        .perform(get("/v1/instruments"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].symbol").value("BTCUSDT"))
+        .andExpect(jsonPath("$[0].status").value("ACTIVE"));
   }
 
   // ---- Create order tests ----
@@ -520,6 +643,15 @@ class TradingApiSecurityTest {
     return """
         {
           "reason":"maintenance"
+        }
+        """;
+  }
+
+  private static String validUpsertInstrumentRequestJson() {
+    return """
+        {
+          "status":"ACTIVE",
+          "referencePrice":50000
         }
         """;
   }

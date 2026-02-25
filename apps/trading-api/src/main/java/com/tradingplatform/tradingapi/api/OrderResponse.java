@@ -16,7 +16,9 @@ public record OrderResponse(
     String status,
     BigDecimal filledQty,
     String clientOrderId,
+    String exchangeName,
     String exchangeOrderId,
+    String exchangeClientOrderId,
     Instant createdAt,
     Instant updatedAt) {
 
@@ -32,7 +34,9 @@ public record OrderResponse(
         order.status().name(),
         order.filledQty(),
         order.clientOrderId(),
+        order.exchangeName(),
         order.exchangeOrderId(),
+        order.exchangeClientOrderId(),
         order.createdAt(),
         order.updatedAt());
   }

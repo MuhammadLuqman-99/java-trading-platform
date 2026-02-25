@@ -53,10 +53,11 @@ public class OutboxPublisherService {
   private void publishSingle(OutboxEventRecord record) {
     try {
       JsonNode payload = parsePayload(record.eventPayload());
+      int eventVersion = eventVersionFor(record.topic());
       EventEnvelope<JsonNode> envelope =
           EventEnvelope.of(
               record.eventType(),
-              1,
+              eventVersion,
               properties.getProducerName(),
               correlationIdFor(record),
               messageKeyFor(record),
@@ -113,5 +114,12 @@ public class OutboxPublisherService {
       return ex.getClass().getSimpleName();
     }
     return message;
+  }
+
+  private static int eventVersionFor(String topic) {
+    if (topic != null && topic.endsWith(".v2")) {
+      return 2;
+    }
+    return 1;
   }
 }

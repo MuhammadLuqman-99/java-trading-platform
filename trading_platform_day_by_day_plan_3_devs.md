@@ -53,15 +53,15 @@
 
 ---
 
-## Week 4 — Binance REST integration (Days 16–20)
+## Week 4 — Binance REST integration (Days 16–20) ✅
 
-| Day | Dev A | Dev B | Dev C | Output |
-|---|---|---|---|---|
-| 16 | Add instruments config endpoints (curated list) | Implement Binance REST client (signed requests) | Secrets handling in compose (env + file mounts) | REST client can call public + signed endpoints |
-| 17 | Enforce precision/filters in order validation | Implement submit order: `newClientOrderId = order_id` mapping | Add connector integration test scaffolding (mock server) | Orders can be submitted to Binance test env |
-| 18 | Add order status mapping table + domain mapping | Implement cancel/query order REST + status mapping | Rate-limit handling utilities (backoff, jitter) | Cancel/query works; backoff in place |
-| 19 | Add “exchange ids” fields to orders + migrations if needed | Implement worker consume `orders.submitted` → place order → update status ACK | Add DB transaction boundaries + retry safety review | End-to-end: API→Kafka→worker→DB update |
-| 20 | Add admin endpoint: connector health + last error | Implement “catch-up” REST polling (open orders, recent trades) | Observability: metrics counters for connector errors/latency | Basic connector health telemetry |
+| Day | Dev A | Dev B | Dev C | Output | Status |
+|---|---|---|---|---|---|
+| 16 | Add instruments config endpoints (curated list) | Implement Binance REST client (signed requests) | Secrets handling in compose (env + file mounts) | REST client can call public + signed endpoints | ✅ Done |
+| 17 | Enforce precision/filters in order validation | Implement submit order: `newClientOrderId = order_id` mapping | Add connector integration test scaffolding (mock server) | Orders can be submitted to Binance test env | ✅ Done |
+| 18 | Add order status mapping table + domain mapping | Implement cancel/query order REST + status mapping | Rate-limit handling utilities (backoff, jitter) | Cancel/query works; backoff in place | ✅ Done |
+| 19 | Add “exchange ids” fields to orders + migrations if needed | Implement worker consume `orders.submitted` → place order → update status ACK | Add DB transaction boundaries + retry safety review | End-to-end: API→Kafka→worker→DB update | ✅ Done |
+| 20 | Add admin endpoint: connector health + last error | Implement “catch-up” REST polling (open orders, recent trades) | Observability: metrics counters for connector errors/latency | Basic connector health telemetry | ✅ Done |
 
 ---
 
